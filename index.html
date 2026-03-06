@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>放置ゲーム</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="save-indicator">SAVED</div>
+  <div id="game">
+
+    <!-- ヘッダー -->
+    <div id="header">
+      <div id="stage-display">ステージ <span id="stage">1</span></div>
+      <button id="mute-btn" onclick="toggleMute()"></button>
+    </div>
+
+    <!-- メインエリア -->
+    <div id="main-grid">
+
+      <!-- 左カラム：敵 + バトルログ -->
+      <div id="left-col">
+        <div id="enemy-area">
+          <img id="enemy-img" src="enemy_slime.png" alt="敵">
+          <div id="enemy-name">スライム</div>
+          <div id="hp-bar-wrap"><div id="hp-bar"></div></div>
+          <div id="hp-display">
+            HP: <span id="enemy-hp">10</span> / <span id="enemy-max-hp">10</span>
+          </div>
+        </div>
+        <div class="log-section">
+          <div class="log-label">バトルログ</div>
+          <div id="log-battle"></div>
+        </div>
+      </div>
+
+      <!-- 右カラム：ステータス + インベントリ + システム + ボタン -->
+      <div id="right-col">
+        <div class="panel" id="player-panel">
+          <div class="panel-label">ステータス</div>
+          <div id="player-stats">
+            <div class="stat-row">
+              <div class="stat-box"><span class="stat-label">ATK</span><span id="stat-atk">1</span></div>
+              <div class="stat-box"><span class="stat-label">STR</span><span id="stat-str">0</span></div>
+              <div class="stat-box"><span class="stat-label">VIT</span><span id="stat-vit">0</span></div>
+              <div class="stat-box"><span class="stat-label">INT</span><span id="stat-int">0</span></div>
+              <div class="stat-box"><span class="stat-label">DEX</span><span id="stat-dex">0</span></div>
+              <div class="stat-box"><span class="stat-label">AGI</span><span id="stat-agi">0</span></div>
+              <div class="stat-box"><span class="stat-label">LUK</span><span id="stat-luk">0</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel" id="inventory-panel">
+          <div class="panel-label">所持アイテム</div>
+          <div id="inventory-list"><span class="empty-msg">まだアイテムがありません</span></div>
+        </div>
+        <div class="log-section">
+          <div class="log-label">システム</div>
+          <div id="log-system"></div>
+        </div>
+        <div id="save-buttons">
+          <button onclick="saveGame()">セーブ</button>
+          <button onclick="resetSave()">リセット</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
