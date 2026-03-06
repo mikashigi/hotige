@@ -1,13 +1,60 @@
+// --- ボーナスティア閾値 ---
+// BONUS_THRESHOLDS[i] 個以上で bonus[i] が加算される
+const BONUS_THRESHOLDS = [100, 500, 999];
+
+function getItemTier(count) {
+  if (count >= 999) return 3;
+  if (count >= 500) return 2;
+  if (count >= 100) return 1;
+  return 0;
+}
+
 // --- アイテムテーブル ---
-// 新しいアイテムはここに追加する
-// rate: ドロップ率 0.0〜1.0
+// 基本効果: 個数によらず×1固定（0〜99個でも100個でも同じ）
+// bonus[i]: BONUS_THRESHOLDS[i] 個到達で加算されるフラットボーナス（累積）
 const ITEMS = [
-  { id: "slime_gel",    name: "スライムゼリー", str: 0, vit: 1, int: 0, dex: 0, agi: 1, luk: 0 },
-  { id: "goblin_fang",  name: "ゴブリンの牙",   str: 2, vit: 0, int: 0, dex: 1, agi: 0, luk: 0 },
-  { id: "orc_hide",     name: "オークの皮",      str: 1, vit: 3, int: 0, dex: 0, agi: 0, luk: 0 },
-  { id: "troll_blood",  name: "トロルの血",      str: 0, vit: 2, int: 2, dex: 0, agi: 0, luk: 1 },
-  { id: "dragon_scale", name: "ドラゴンの鱗",    str: 3, vit: 3, int: 3, dex: 1, agi: 1, luk: 2 },
-  { id: "lucky_coin",   name: "ラッキーコイン",  str: 0, vit: 0, int: 0, dex: 0, agi: 0, luk: 5 },
+  { id: "slime_gel",    name: "スライムゼリー",
+    str: 0, vit: 1, int: 0, dex: 0, agi: 1, luk: 0,
+    bonus: [
+      { str: 0, vit:  3, int: 0, dex: 0, agi:  3, luk: 0 },
+      { str: 0, vit:  5, int: 0, dex: 0, agi:  5, luk: 2 },
+      { str: 0, vit: 10, int: 0, dex: 0, agi:  8, luk: 5 },
+    ] },
+  { id: "goblin_fang",  name: "ゴブリンの牙",
+    str: 2, vit: 0, int: 0, dex: 1, agi: 0, luk: 0,
+    bonus: [
+      { str:  5, vit: 0, int: 0, dex:  3, agi: 0, luk: 0 },
+      { str: 10, vit: 0, int: 0, dex:  6, agi: 3, luk: 0 },
+      { str: 18, vit: 0, int: 0, dex: 10, agi: 5, luk: 0 },
+    ] },
+  { id: "orc_hide",     name: "オークの皮",
+    str: 1, vit: 3, int: 0, dex: 0, agi: 0, luk: 0,
+    bonus: [
+      { str:  3, vit:  8, int: 0, dex: 0, agi: 0, luk: 0 },
+      { str:  6, vit: 15, int: 0, dex: 3, agi: 0, luk: 0 },
+      { str: 10, vit: 25, int: 0, dex: 5, agi: 0, luk: 0 },
+    ] },
+  { id: "troll_blood",  name: "トロルの血",
+    str: 0, vit: 2, int: 2, dex: 0, agi: 0, luk: 1,
+    bonus: [
+      { str: 0, vit:  5, int:  5, dex: 0, agi: 0, luk:  3 },
+      { str: 0, vit: 10, int: 10, dex: 0, agi: 0, luk:  6 },
+      { str: 0, vit: 18, int: 18, dex: 0, agi: 0, luk: 10 },
+    ] },
+  { id: "dragon_scale", name: "ドラゴンの鱗",
+    str: 3, vit: 3, int: 3, dex: 1, agi: 1, luk: 2,
+    bonus: [
+      { str:  8, vit:  8, int:  8, dex:  3, agi:  3, luk:  5 },
+      { str: 15, vit: 15, int: 15, dex:  6, agi:  6, luk: 10 },
+      { str: 25, vit: 25, int: 25, dex: 10, agi: 10, luk: 18 },
+    ] },
+  { id: "lucky_coin",   name: "ラッキーコイン",
+    str: 0, vit: 0, int: 0, dex: 0, agi: 0, luk: 5,
+    bonus: [
+      { str: 0, vit: 0, int: 0, dex: 0, agi:  3, luk: 10 },
+      { str: 0, vit: 0, int: 0, dex: 3, agi:  6, luk: 20 },
+      { str: 0, vit: 0, int: 0, dex: 5, agi: 10, luk: 35 },
+    ] },
 ];
 
 // アイテムIDから参照するためのマップ
@@ -211,7 +258,16 @@ function computePlayerStats() {
   for (const [itemId, count] of Object.entries(state.inventory)) {
     const item = ITEM_MAP[itemId];
     if (!item) continue;
-    for (const s of Object.keys(raw)) raw[s] += item[s] * count;
+    // 基本効果: 個数によらずフラット×1
+    for (const s of Object.keys(raw)) raw[s] += item[s];
+    // ボーナスティア: 閾値到達ごとにフラット加算
+    if (item.bonus) {
+      item.bonus.forEach((tier, i) => {
+        if (count >= BONUS_THRESHOLDS[i]) {
+          for (const s of Object.keys(raw)) raw[s] += (tier[s] || 0);
+        }
+      });
+    }
   }
   return {
     ...raw,
@@ -262,16 +318,67 @@ function updateStatsDisplay() {
   resetAttackInterval(s);
 }
 
+// アイテムの現在合計効果を返す（基本×1 + 達成済みボーナス累積）
+function calcItemEffect(item, count) {
+  const eff = { str: item.str, vit: item.vit, int: item.int,
+                dex: item.dex, agi: item.agi, luk: item.luk };
+  if (item.bonus) {
+    item.bonus.forEach((tier, i) => {
+      if (count >= BONUS_THRESHOLDS[i]) {
+        for (const s of Object.keys(eff)) eff[s] += (tier[s] || 0);
+      }
+    });
+  }
+  return eff;
+}
+
+// ステータスオブジェクトを "STR+2 VIT+3" 形式に変換
+function statStr(obj, prefix = "") {
+  return ["str","vit","int","dex","agi","luk"]
+    .filter(s => obj[s] > 0)
+    .map(s => `${prefix}${s.toUpperCase()}+${obj[s]}`)
+    .join(" ") || "—";
+}
+
 function updateInventoryDisplay() {
+  const TIER_LABELS = ["", "T1", "T2", "T3"];
   const entries = ITEMS
     .filter(item => state.inventory[item.id] > 0)
     .map(item => {
       const count = state.inventory[item.id];
-      const stats = ["str","vit","int","dex","agi","luk"]
-        .filter(s => item[s] > 0)
-        .map(s => `${s.toUpperCase()}+${item[s]}`)
-        .join(" ");
-      return `<div class="inv-row"><span class="inv-name">${item.name}</span><span class="inv-count">×${count}</span><span class="inv-stats">${stats}</span></div>`;
+      const tier  = getItemTier(count);
+      const next  = BONUS_THRESHOLDS[tier];
+
+      const tierBadge = tier > 0
+        ? `<span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>`
+        : `<span class="tier-badge tier-0">T0</span>`;
+
+      const nextHint = next !== undefined
+        ? `<span class="inv-next">→${next}</span>`
+        : `<span class="inv-next max">MAX</span>`;
+
+      // 現在の合計効果
+      const curEff  = calcItemEffect(item, count);
+      const curText = statStr(curEff);
+
+      // 次ティアで加わるボーナス
+      let nextText = "";
+      if (next !== undefined && item.bonus && item.bonus[tier]) {
+        nextText = `<span class="inv-next-bonus">次(${next}個): +${statStr(item.bonus[tier])}</span>`;
+      }
+
+      return `<div class="inv-entry">
+        <div class="inv-row">
+          <span class="inv-name">${item.name}</span>
+          ${tierBadge}
+          <span class="inv-count">×${count}</span>
+          ${nextHint}
+        </div>
+        <div class="inv-detail">
+          <span class="inv-cur-bonus">現在: ${curText}</span>
+          ${nextText}
+        </div>
+      </div>`;
     });
   elInventory.innerHTML = entries.length
     ? entries.join("")
@@ -284,12 +391,15 @@ function rollDrops(enemy) {
     if (Math.random() < drop.rate) {
       const item = ITEM_MAP[drop.itemId];
       if (!item) return;
-      state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
-      const stats = ["str","vit","int","dex","agi","luk"]
-        .filter(s => item[s] > 0)
-        .map(s => `${s.toUpperCase()}+${item[s]}`)
-        .join(" ");
-      addSystemLog(`${item.name} を入手！ ${stats}`);
+      const prevCount = state.inventory[item.id] || 0;
+      state.inventory[item.id] = prevCount + 1;
+      const newCount  = state.inventory[item.id];
+      const prevTier  = getItemTier(prevCount);
+      const newTier   = getItemTier(newCount);
+      addSystemLog(`${item.name} を入手！ (×${newCount})`);
+      if (newTier > prevTier) {
+        addSystemLog(`★ ${item.name} Tier${newTier} 解放！ボーナス加算！`);
+      }
       updateStatsDisplay();
       updateInventoryDisplay();
     }

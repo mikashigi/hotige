@@ -344,9 +344,51 @@ html, body {
   font-size: 0.8rem;
 }
 
+.inv-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-light);
+}
+.inv-entry:last-child { border-bottom: none; padding-bottom: 0; }
+
 .inv-name  { flex: 1; color: #7a5c00; font-weight: bold; }
-.inv-count { color: var(--text-muted); min-width: 24px; text-align: right; }
-.inv-stats { font-size: 0.72rem; color: #5a8840; min-width: 100px; }
+.inv-count { color: var(--text-muted); min-width: 32px; text-align: right; }
+
+.inv-detail {
+  display: flex;
+  gap: 10px;
+  font-size: 0.7rem;
+  padding-left: 2px;
+  flex-wrap: wrap;
+}
+
+.inv-cur-bonus  { color: #3a6820; }
+.inv-next-bonus { color: #8a6800; }
+
+.tier-badge {
+  font-size: 0.62rem;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.tier-0 { background: #e8e8e8; color: #888;    border: 1px solid #ccc; }
+.tier-1 { background: #d4f0a0; color: #3a6a10; border: 1px solid #a8d870; }
+.tier-2 { background: #ffe080; color: #7a5a00; border: 1px solid #d9c840; }
+.tier-3 { background: #ffc0c0; color: #8a1a1a; border: 1px solid #e08080; }
+
+.inv-next {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  min-width: 36px;
+  text-align: right;
+}
+.inv-next.max {
+  color: #c05000;
+  font-weight: bold;
+}
 
 .empty-msg {
   font-size: 0.78rem;
