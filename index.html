@@ -12,8 +12,11 @@
 
     <!-- ヘッダー -->
     <div id="header">
+      <div id="book-btns">
+        <button class="book-btn" onclick="openModal('item-book')">アイテム図鑑</button>
+        <button class="book-btn" onclick="openModal('monster-book')">モンスター図鑑</button>
+      </div>
       <div id="stage-display"><span id="map-name">草原</span><span id="stage-num">1 / 10</span></div>
-      <div id="gold-display">G <span id="gold">0</span></div>
       <button id="mute-btn" onclick="toggleMute()"></button>
     </div>
 
@@ -72,16 +75,45 @@
           <div id="inventory-list"><span class="empty-msg">まだアイテムがありません</span></div>
         </div>
         <div class="panel" id="shop-panel">
-          <div class="panel-label">ショップ</div>
+          <div class="panel-label shop-label">
+            <span>ショップ</span>
+            <span id="gold-display">G <span id="gold">0</span></span>
+          </div>
           <div id="shop-content">
             <div class="shop-row">
               <div class="shop-info">
-                <span class="shop-name">ATK 強化</span>
-                <span class="shop-desc">攻撃力を1上げる</span>
+                <span class="shop-name">HP全回復</span>
+                <span class="shop-desc">HPを最大まで回復する</span>
               </div>
-              <button id="btn-buy-atk" onclick="buyAtk()">
-                <span id="shop-atk-cost">10</span> G
-              </button>
+              <button class="shop-btn" id="btn-heal" onclick="buyHeal()"><span id="shop-heal-cost">20</span> G</button>
+            </div>
+            <div class="shop-row">
+              <div class="shop-info">
+                <span class="shop-name">体力強化</span>
+                <span class="shop-desc">VIT+2（最大HP+10）</span>
+              </div>
+              <button class="shop-btn" id="btn-buy-vit" onclick="buyShopStat('vit')"><span id="shop-vit-cost">15</span> G</button>
+            </div>
+            <div class="shop-row">
+              <div class="shop-info">
+                <span class="shop-name">速度強化</span>
+                <span class="shop-desc">AGI+3（攻撃速度↑）</span>
+              </div>
+              <button class="shop-btn" id="btn-buy-agi" onclick="buyShopStat('agi')"><span id="shop-agi-cost">20</span> G</button>
+            </div>
+            <div class="shop-row">
+              <div class="shop-info">
+                <span class="shop-name">命中強化</span>
+                <span class="shop-desc">DEX+3（命中率+0.9%）</span>
+              </div>
+              <button class="shop-btn" id="btn-buy-dex" onclick="buyShopStat('dex')"><span id="shop-dex-cost">15</span> G</button>
+            </div>
+            <div class="shop-row">
+              <div class="shop-info">
+                <span class="shop-name">幸運強化</span>
+                <span class="shop-desc">LUK+3（クリティカル率↑）</span>
+              </div>
+              <button class="shop-btn" id="btn-buy-luk" onclick="buyShopStat('luk')"><span id="shop-luk-cost">25</span> G</button>
             </div>
           </div>
         </div>
@@ -93,6 +125,28 @@
 
     </div>
   </div>
+  <!-- アイテム図鑑モーダル -->
+  <div id="modal-item-book" class="modal-overlay" onclick="closeModal('item-book')">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span>アイテム図鑑</span>
+        <button class="modal-close" onclick="closeModal('item-book')">✕</button>
+      </div>
+      <div class="modal-body" id="item-book-content"></div>
+    </div>
+  </div>
+
+  <!-- モンスター図鑑モーダル -->
+  <div id="modal-monster-book" class="modal-overlay" onclick="closeModal('monster-book')">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span>モンスター図鑑</span>
+        <button class="modal-close" onclick="closeModal('monster-book')">✕</button>
+      </div>
+      <div class="modal-body" id="monster-book-content"></div>
+    </div>
+  </div>
+
   <script src="game.js"></script>
 </body>
 </html>

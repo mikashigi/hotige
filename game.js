@@ -115,6 +115,23 @@ function buildMaps() {
 
 const MAPS = buildMaps();
 
+// --- ショップ定義 ---
+const SHOP_DEFS = {
+  vit: { baseCost: 15, mult: 1.4, stat: "vit", amount: 2 },
+  agi: { baseCost: 20, mult: 1.4, stat: "agi", amount: 3 },
+  dex: { baseCost: 15, mult: 1.4, stat: "dex", amount: 3 },
+  luk: { baseCost: 25, mult: 1.5, stat: "luk", amount: 3 },
+};
+
+function shopStatCost(key) {
+  const def = SHOP_DEFS[key];
+  return Math.ceil(def.baseCost * Math.pow(def.mult, state.shopLevels[key]));
+}
+
+function healCost() {
+  return Math.max(20, Math.ceil(state.playerMaxHp * 0.4));
+}
+
 // --- ゲーム状態 ---
 const state = {
   mapIndex:   0,  // 0〜9（マップ番号）
@@ -127,6 +144,7 @@ const state = {
   playerMaxHp:50,
   inventory:  {}, // { itemId: count }
   cleared:    false,
+  shopLevels: { vit: 0, agi: 0, dex: 0, luk: 0 },
 };
 
 // --- DOM 参照 ---
@@ -138,7 +156,6 @@ const elEnemyHp    = document.getElementById("enemy-hp");
 const elEnemyMaxHp = document.getElementById("enemy-max-hp");
 const elHpBar           = document.getElementById("hp-bar");
 const elEnemyAtkDisplay = document.getElementById("enemy-atk-display");
-const elAttack          = document.getElementById("stat-atk"); // 後方互換
 const elLogBattle  = document.getElementById("log-battle");
 const elLogSystem  = document.getElementById("log-system");
 const elInventory  = document.getElementById("inventory-list");
@@ -154,16 +171,24 @@ const elPlayerHpDisplay = document.getElementById("player-hp-display");
 const elInfoHit         = document.getElementById("info-hit");
 const elInfoSpd         = document.getElementById("info-spd");
 const elInfoCrit        = document.getElementById("info-crit");
-const elGold            = document.getElementById("gold");
-const elShopAtkCost     = document.getElementById("shop-atk-cost");
-const elBtnBuyAtk       = document.getElementById("btn-buy-atk");
+const elGold        = document.getElementById("gold");
+const elBtnHeal     = document.getElementById("btn-heal");
+const elHealCost    = document.getElementById("shop-heal-cost");
+const elBtnVit      = document.getElementById("btn-buy-vit");
+const elVitCost     = document.getElementById("shop-vit-cost");
+const elBtnAgi      = document.getElementById("btn-buy-agi");
+const elAgiCost     = document.getElementById("shop-agi-cost");
+const elBtnDex      = document.getElementById("btn-buy-dex");
+const elDexCost     = document.getElementById("shop-dex-cost");
+const elBtnLuk      = document.getElementById("btn-buy-luk");
+const elLukCost     = document.getElementById("shop-luk-cost");
 
 // --- ログ ---
 function addLog(msg) {
   const line = document.createElement("div");
   line.textContent = msg;
   elLogBattle.prepend(line);
-  while (elLogBattle.children.length > 5) {
+  while (elLogBattle.children.length > 10) {
     elLogBattle.removeChild(elLogBattle.lastChild);
   }
 }
@@ -172,7 +197,7 @@ function addSystemLog(msg) {
   const line = document.createElement("div");
   line.textContent = msg;
   elLogSystem.prepend(line);
-  while (elLogSystem.children.length > 5) {
+  while (elLogSystem.children.length > 10) {
     elLogSystem.removeChild(elLogSystem.lastChild);
   }
 }
@@ -303,26 +328,40 @@ function gameClear() {
 }
 
 // --- ショップ ---
-// ATK強化コスト: 10 × ATK^1.5 の緩やかな累乗カーブ
-function upgradeCost() {
-  return Math.ceil(10 * Math.pow(state.attack, 1.5));
-}
-
 function updateShopDisplay() {
-  const cost = upgradeCost();
   elGold.textContent = state.gold;
-  elShopAtkCost.textContent = cost;
-  elBtnBuyAtk.disabled = state.gold < cost;
+
+  const hc = healCost();
+  elHealCost.textContent  = hc;
+  elBtnHeal.disabled = state.gold < hc || state.playerHp >= state.playerMaxHp;
+
+  for (const key of Object.keys(SHOP_DEFS)) {
+    const cost = shopStatCost(key);
+    document.getElementById(`shop-${key}-cost`).textContent = cost;
+    document.getElementById(`btn-buy-${key}`).disabled = state.gold < cost;
+  }
 }
 
-function buyAtk() {
-  const cost = upgradeCost();
-  if (state.gold < cost) return;
+function buyHeal() {
+  const cost = healCost();
+  if (state.gold < cost || state.playerHp >= state.playerMaxHp) return;
   state.gold -= cost;
-  state.attack++;
+  state.playerHp = state.playerMaxHp;
   updateShopDisplay();
   updateStatsDisplay();
-  addSystemLog(`ATK強化！ ATK が ${state.attack} になった (次回: ${upgradeCost()}G)`);
+  addSystemLog(`HP全回復！ (${state.playerMaxHp}/${state.playerMaxHp})`);
+}
+
+function buyShopStat(key) {
+  const cost = shopStatCost(key);
+  if (state.gold < cost) return;
+  state.gold -= cost;
+  state.shopLevels[key]++;
+  updateShopDisplay();
+  updateStatsDisplay();
+  const def = SHOP_DEFS[key];
+  const total = state.shopLevels[key] * def.amount;
+  addSystemLog(`${key.toUpperCase()}強化！ ${def.stat.toUpperCase()}が合計+${total} (次回: ${shopStatCost(key)}G)`);
 }
 
 // --- 音 ---
@@ -369,6 +408,10 @@ function computePlayerStats() {
         }
       });
     }
+  }
+  // ショップ強化ボーナス
+  for (const [key, def] of Object.entries(SHOP_DEFS)) {
+    raw[def.stat] += state.shopLevels[key] * def.amount;
   }
   return {
     ...raw,
@@ -550,6 +593,7 @@ function saveData() {
     playerMaxHp: state.playerMaxHp,
     inventory:   state.inventory,
     cleared:     state.cleared,
+    shopLevels:  state.shopLevels,
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
 }
@@ -579,6 +623,7 @@ function loadGame() {
   state.playerMaxHp= data.playerMaxHp ?? 50;
   state.inventory  = data.inventory   || {};
   state.cleared    = data.cleared     || false;
+  state.shopLevels = data.shopLevels  || { vit: 0, agi: 0, dex: 0, luk: 0 };
   return true;
 }
 
@@ -586,6 +631,78 @@ function resetSave() {
   if (!confirm("セーブデータを削除してリセットしますか？")) return;
   localStorage.removeItem(SAVE_KEY);
   location.reload();
+}
+
+// --- 図鑑モーダル ---
+function openModal(id) {
+  if (id === "item-book")    renderItemBook();
+  if (id === "monster-book") renderMonsterBook();
+  document.getElementById(`modal-${id}`).classList.add("open");
+}
+
+function closeModal(id) {
+  document.getElementById(`modal-${id}`).classList.remove("open");
+}
+
+function renderItemBook() {
+  const TIER_LABELS = ["T0", "T1", "T2", "T3"];
+  const cards = ITEMS.map(item => {
+    const count = state.inventory[item.id] || 0;
+    const tier  = getItemTier(count);
+    const unseen = count === 0;
+
+    const tierRows = item.bonus.map((bonus, i) => {
+      const threshold = BONUS_THRESHOLDS[i];
+      const cleared   = count >= threshold;
+      return `<div class="book-tier-line ${cleared ? "cleared" : "locked"}">
+        <span class="tier-badge tier-${cleared ? i + 1 : 0}">${TIER_LABELS[i + 1]}</span>
+        <span>${threshold}個: ${statStr(bonus)}</span>
+        ${cleared ? "<span>✓</span>" : ""}
+      </div>`;
+    }).join("");
+
+    return `<div class="book-item-card ${unseen ? "unseen" : ""}">
+      <div class="book-item-head">
+        <span class="book-item-name">${unseen ? "???" : item.name}</span>
+        ${!unseen ? `<span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>` : ""}
+        <span class="book-item-count">${unseen ? "未入手" : `×${count}`}</span>
+      </div>
+      ${!unseen ? `
+      <div class="book-base-stats">基本: ${statStr(item)}</div>
+      <div class="book-tier-list">${tierRows}</div>` : ""}
+    </div>`;
+  }).join("");
+
+  document.getElementById("item-book-content").innerHTML =
+    `<div class="book-item-grid">${cards}</div>`;
+}
+
+function renderMonsterBook() {
+  const sections = MAPS.map((map, mi) => {
+    const rows = map.stages.map((enemy, si) => {
+      const seen   = mi < state.mapIndex || (mi === state.mapIndex && si <= state.stageInMap);
+      const isBoss = si === 9;
+      const drops  = seen
+        ? enemy.drops.map(d => `${ITEM_MAP[d.itemId]?.name}(${Math.round(d.rate * 100)}%)`).join(" / ")
+        : "—";
+
+      return `<div class="book-monster-row ${!seen ? "unseen" : ""} ${isBoss ? "boss-row" : ""}">
+        <span class="book-monster-name ${isBoss ? "boss" : ""}">${seen ? (isBoss ? "★ " + enemy.name : enemy.name) : "???"}</span>
+        ${seen ? `
+        <span class="book-stat-val">HP ${enemy.hp}</span>
+        <span class="book-stat-val">ATK ${enemy.atk}</span>
+        <span class="book-stat-val">${(1000 / enemy.atkInterval).toFixed(1)}/s</span>
+        <span class="book-drop-list">${drops}</span>` : ""}
+      </div>`;
+    }).join("");
+
+    return `<div class="book-map-section">
+      <div class="book-map-name">${mi + 1}. ${map.name}</div>
+      ${rows}
+    </div>`;
+  }).join("");
+
+  document.getElementById("monster-book-content").innerHTML = sections;
 }
 
 // --- 初期化 ---
