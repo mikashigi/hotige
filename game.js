@@ -64,7 +64,7 @@ const ITEM_MAP = Object.fromEntries(ITEMS.map(item => [item.id, item]));
 // 1マップ=10ステージ、ステージ10はボス
 // isFinal: true のボスを倒すとゲームクリア
 const MAP_DEFS = [
-  { name: "草原",   enemies: ["スライム",    "野うさぎ",     "ゴブリン"],       boss: "草原の王",   imgs: ["enemy_slime.png",  "enemy_slime.png",  "enemy_goblin.png"],  bossImg: "enemy_goblin.png",  drops: ["slime_gel",   "goblin_fang"]  },
+  { name: "草原",   enemies: ["スライム",    "野うさぎ",     "ゴブリン",     "ゴブリン2"],       boss: "草原の王",   imgs: ["enemy_slime.png",  "enemy_slime.png",  "enemy_goblin.png",  "enemy_goblin.png"],  bossImg: "enemy_goblin.png",  drops: ["slime_gel",   "goblin_fang"]  },
   { name: "森",     enemies: ["ウルフ",       "キノコ人",     "ウッドゴーレム"], boss: "森の主",     imgs: ["enemy_goblin.png", "enemy_goblin.png", "enemy_orc.png"],     bossImg: "enemy_orc.png",     drops: ["slime_gel",   "goblin_fang"]  },
   { name: "洞窟",   enemies: ["コウモリ",     "ゴブリン長",   "ストーンゴーレム"],boss:"岩窟の番人", imgs: ["enemy_goblin.png", "enemy_goblin.png", "enemy_orc.png"],     bossImg: "enemy_orc.png",     drops: ["orc_hide",    "goblin_fang"]  },
   { name: "砂漠",   enemies: ["サンドワーム", "スコーピオン", "ミイラ兵"],       boss: "砂漠の覇者", imgs: ["enemy_orc.png",    "enemy_orc.png",    "enemy_troll.png"],   bossImg: "enemy_troll.png",   drops: ["orc_hide",    "goblin_fang"]  },
