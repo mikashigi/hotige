@@ -60,38 +60,78 @@ const ITEMS = [
 // アイテムIDから参照するためのマップ
 const ITEM_MAP = Object.fromEntries(ITEMS.map(item => [item.id, item]));
 
-// --- 敵データ ---
-// hp          : 最大HP
-// atk         : 攻撃力（プレイヤーへのダメージ）
-// atkInterval : 攻撃間隔 (ms)
-// drops       : [{ itemId, rate }] の形式で複数追加可能
-const ENEMIES = [
-  { name: "スライム", hp: 10,  atk: 2,  atkInterval: 2000, img: "enemy_slime.png",
-    drops: [{ itemId: "slime_gel",    rate: 0.6 }] },
-  { name: "ゴブリン", hp: 25,  atk: 4,  atkInterval: 2000, img: "enemy_goblin.png",
-    drops: [{ itemId: "goblin_fang",  rate: 0.5 }, { itemId: "lucky_coin", rate: 0.1 }] },
-  { name: "オーク",   hp: 50,  atk: 7,  atkInterval: 2000, img: "enemy_orc.png",
-    drops: [{ itemId: "orc_hide",     rate: 0.5 }] },
-  { name: "トロル",   hp: 100, atk: 12, atkInterval: 2000, img: "enemy_troll.png",
-    drops: [{ itemId: "troll_blood",  rate: 0.4 }, { itemId: "lucky_coin", rate: 0.2 }] },
-  { name: "ドラゴン", hp: 200, atk: 20, atkInterval: 2000, img: "enemy_dragon.png",
-    drops: [{ itemId: "dragon_scale", rate: 0.7 }, { itemId: "lucky_coin", rate: 0.3 }] },
+// --- マップ定義 ---
+// 1マップ=10ステージ、ステージ10はボス
+// isFinal: true のボスを倒すとゲームクリア
+const MAP_DEFS = [
+  { name: "草原",   enemies: ["スライム",    "野うさぎ",     "ゴブリン"],       boss: "草原の王",   imgs: ["enemy_slime.png",  "enemy_slime.png",  "enemy_goblin.png"],  bossImg: "enemy_goblin.png",  drops: ["slime_gel",   "goblin_fang"]  },
+  { name: "森",     enemies: ["ウルフ",       "キノコ人",     "ウッドゴーレム"], boss: "森の主",     imgs: ["enemy_goblin.png", "enemy_goblin.png", "enemy_orc.png"],     bossImg: "enemy_orc.png",     drops: ["slime_gel",   "goblin_fang"]  },
+  { name: "洞窟",   enemies: ["コウモリ",     "ゴブリン長",   "ストーンゴーレム"],boss:"岩窟の番人", imgs: ["enemy_goblin.png", "enemy_goblin.png", "enemy_orc.png"],     bossImg: "enemy_orc.png",     drops: ["orc_hide",    "goblin_fang"]  },
+  { name: "砂漠",   enemies: ["サンドワーム", "スコーピオン", "ミイラ兵"],       boss: "砂漠の覇者", imgs: ["enemy_orc.png",    "enemy_orc.png",    "enemy_troll.png"],   bossImg: "enemy_troll.png",   drops: ["orc_hide",    "goblin_fang"]  },
+  { name: "雪原",   enemies: ["雪うさぎ",     "アイス魔",     "イエティ"],       boss: "氷の巨人",   imgs: ["enemy_orc.png",    "enemy_orc.png",    "enemy_troll.png"],   bossImg: "enemy_troll.png",   drops: ["troll_blood", "orc_hide"]     },
+  { name: "火山",   enemies: ["ラバスライム", "炎の精霊",     "マグマゴーレム"], boss: "火竜",       imgs: ["enemy_troll.png",  "enemy_troll.png",  "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["troll_blood", "orc_hide"]     },
+  { name: "海底",   enemies: ["人魚戦士",     "深海魚",       "クラーケン"],     boss: "海底の王",   imgs: ["enemy_troll.png",  "enemy_troll.png",  "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["dragon_scale","troll_blood"]  },
+  { name: "天空",   enemies: ["天空騎士",     "嵐の精霊",     "古代竜"],         boss: "天空の番人", imgs: ["enemy_dragon.png", "enemy_dragon.png", "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["dragon_scale","troll_blood"]  },
+  { name: "魔界",   enemies: ["デーモン",     "堕天使",       "魔王の将"],       boss: "魔王の使徒", imgs: ["enemy_dragon.png", "enemy_dragon.png", "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["dragon_scale","lucky_coin"]   },
+  { name: "魔王城", enemies: ["魔王親衛隊",   "魔王の騎士",   "魔王の怒り"],     boss: "魔王",       imgs: ["enemy_dragon.png", "enemy_dragon.png", "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["dragon_scale","lucky_coin"],  isFinal: true },
 ];
+
+// マップデータを生成（10マップ×10ステージ = 100エネミー）
+function buildMaps() {
+  return MAP_DEFS.map((def, mi) => {
+    const mult = 1 + mi * 0.8; // マップ係数（草原:1.0 〜 魔王城:8.2）
+    const dropList = def.drops.map(id => ({ itemId: id, rate: 0.5 }));
+    const bossDrop = def.drops.map(id => ({ itemId: id, rate: 0.9 }));
+    const stages = [];
+    for (let si = 0; si < 9; si++) {
+      const ni = si % def.enemies.length;
+      stages.push({
+        name:        def.enemies[ni],
+        hp:          Math.round(20  * mult * (1 + si * 0.15)),
+        atk:         Math.round(3   * Math.sqrt(mult) * (1 + si * 0.08)),
+        atkInterval: 2000,
+        gold:        Math.round(5   * mult * (1 + si * 0.1)),
+        img:         def.imgs[ni],
+        drops:       dropList,
+      });
+    }
+    const bossHpMult = def.isFinal ? 10 : 6;
+    const bossAtkMult = def.isFinal ? 4 : 3;
+    const base = stages[8];
+    stages.push({
+      name:        def.boss,
+      hp:          Math.round(base.hp   * bossHpMult),
+      atk:         Math.round(base.atk  * bossAtkMult),
+      atkInterval: 1500,
+      gold:        Math.round(base.gold * 5),
+      img:         def.bossImg,
+      drops:       bossDrop,
+      isBoss:      true,
+      isFinal:     def.isFinal || false,
+    });
+    return { name: def.name, stages };
+  });
+}
+
+const MAPS = buildMaps();
 
 // --- ゲーム状態 ---
 const state = {
-  stage: 1,
-  attack: 1,
-  enemyIndex: 0,
-  enemyHp: 0,
+  mapIndex:   0,  // 0〜9（マップ番号）
+  stageInMap: 0,  // 0〜9（マップ内ステージ番号）
+  attack:     1,
+  gold:       0,
+  enemyHp:    0,
   enemyMaxHp: 0,
-  playerHp: 50,
-  playerMaxHp: 50,
-  inventory: {}, // { itemId: count }
+  playerHp:   50,
+  playerMaxHp:50,
+  inventory:  {}, // { itemId: count }
+  cleared:    false,
 };
 
 // --- DOM 参照 ---
-const elStage      = document.getElementById("stage");
+const elMapName    = document.getElementById("map-name");
+const elStageNum   = document.getElementById("stage-num");
 const elEnemyName  = document.getElementById("enemy-name");
 const elEnemyImg   = document.getElementById("enemy-img");
 const elEnemyHp    = document.getElementById("enemy-hp");
@@ -114,6 +154,9 @@ const elPlayerHpDisplay = document.getElementById("player-hp-display");
 const elInfoHit         = document.getElementById("info-hit");
 const elInfoSpd         = document.getElementById("info-spd");
 const elInfoCrit        = document.getElementById("info-crit");
+const elGold            = document.getElementById("gold");
+const elShopAtkCost     = document.getElementById("shop-atk-cost");
+const elBtnBuyAtk       = document.getElementById("btn-buy-atk");
 
 // --- ログ ---
 function addLog(msg) {
@@ -156,29 +199,39 @@ function enemyTick(enemy) {
 
   if (state.playerHp <= 0) {
     stopEnemyAttack();
-    addLog("倒れた…ステージ1からやり直し！");
+    addLog("倒れた…マップ1からやり直し！");
     setTimeout(() => {
-      state.playerHp = state.playerMaxHp;
-      state.stage = 1;
-      state.enemyIndex = 0;
-      elStage.textContent = state.stage;
+      state.playerHp  = state.playerMaxHp;
+      state.mapIndex  = 0;
+      state.stageInMap = 0;
       spawnEnemy();
       updateStatsDisplay();
     }, 2000);
   }
 }
 
+// --- ステージ表示更新 ---
+function updateStageDisplay() {
+  elMapName.textContent  = MAPS[state.mapIndex].name;
+  elStageNum.textContent = `${state.stageInMap + 1} / 10`;
+}
+
 // --- 敵をセット ---
 function spawnEnemy() {
-  const idx = state.enemyIndex % ENEMIES.length;
-  const enemy = ENEMIES[idx];
-  state.enemyHp = enemy.hp;
+  if (state.cleared) return;
+  const enemy = MAPS[state.mapIndex].stages[state.stageInMap];
+  state.enemyHp    = enemy.hp;
   state.enemyMaxHp = enemy.hp;
   elEnemyName.textContent = enemy.name;
-  elEnemyImg.src = enemy.img;
+  elEnemyImg.src          = enemy.img;
   elEnemyAtkDisplay.textContent = `ATK ${enemy.atk}  ${(1000 / enemy.atkInterval).toFixed(1)}/s`;
+  updateStageDisplay();
   updateHpDisplay();
-  addLog(`${enemy.name} が現れた！`);
+  if (enemy.isBoss) {
+    addLog(`★ BOSS: ${enemy.name} が現れた！`);
+  } else {
+    addLog(`${enemy.name} が現れた！`);
+  }
   startEnemyAttack(enemy);
 }
 
@@ -214,14 +267,62 @@ function tick() {
 
   if (state.enemyHp <= 0) {
     stopEnemyAttack();
-    addLog(`${elEnemyName.textContent} を倒した！`);
+    const defeatedEnemy = MAPS[state.mapIndex].stages[state.stageInMap];
+    const earned = Math.floor(defeatedEnemy.gold * (0.75 + Math.random() * 0.5));
+    state.gold += earned;
+    addLog(`${defeatedEnemy.name} を倒した！ +${earned}G`);
     playDefeatSound();
-    rollDrops(ENEMIES[state.enemyIndex % ENEMIES.length]);
-    state.enemyIndex++;
-    state.stage++;
-    elStage.textContent = state.stage;
+    updateShopDisplay();
+    rollDrops(defeatedEnemy);
+
+    if (defeatedEnemy.isFinal) {
+      gameClear();
+      return;
+    }
+
+    state.stageInMap++;
+    if (state.stageInMap >= 10) {
+      state.stageInMap = 0;
+      state.mapIndex++;
+      if (state.mapIndex >= MAPS.length) { gameClear(); return; }
+      addSystemLog(`★ マップクリア！ 「${MAPS[state.mapIndex].name}」へ！`);
+    }
     spawnEnemy();
   }
+}
+
+// --- ゲームクリア ---
+function gameClear() {
+  state.cleared = true;
+  stopEnemyAttack();
+  clearInterval(attackIntervalId);
+  elMapName.textContent  = "★ GAME CLEAR ★";
+  elStageNum.textContent = "";
+  addLog("魔王を倒した！ 世界に平和が訪れた！");
+  addSystemLog("★★★ ゲームクリア！ おめでとうございます！ ★★★");
+}
+
+// --- ショップ ---
+// ATK強化コスト: 10 × ATK^1.5 の緩やかな累乗カーブ
+function upgradeCost() {
+  return Math.ceil(10 * Math.pow(state.attack, 1.5));
+}
+
+function updateShopDisplay() {
+  const cost = upgradeCost();
+  elGold.textContent = state.gold;
+  elShopAtkCost.textContent = cost;
+  elBtnBuyAtk.disabled = state.gold < cost;
+}
+
+function buyAtk() {
+  const cost = upgradeCost();
+  if (state.gold < cost) return;
+  state.gold -= cost;
+  state.attack++;
+  updateShopDisplay();
+  updateStatsDisplay();
+  addSystemLog(`ATK強化！ ATK が ${state.attack} になった (次回: ${upgradeCost()}G)`);
 }
 
 // --- 音 ---
@@ -439,14 +540,16 @@ function showSaveIndicator() {
 
 function saveData() {
   const data = {
-    stage:        state.stage,
-    attack:       state.attack,
-    enemyIndex:   state.enemyIndex,
-    enemyHp:      state.enemyHp,
-    enemyMaxHp:   state.enemyMaxHp,
-    playerHp:     state.playerHp,
-    playerMaxHp:  state.playerMaxHp,
-    inventory:    state.inventory,
+    mapIndex:    state.mapIndex,
+    stageInMap:  state.stageInMap,
+    attack:      state.attack,
+    gold:        state.gold,
+    enemyHp:     state.enemyHp,
+    enemyMaxHp:  state.enemyMaxHp,
+    playerHp:    state.playerHp,
+    playerMaxHp: state.playerMaxHp,
+    inventory:   state.inventory,
+    cleared:     state.cleared,
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
 }
@@ -466,14 +569,16 @@ function loadGame() {
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) return false;
   const data = JSON.parse(raw);
-  state.stage       = data.stage;
-  state.attack      = data.attack;
-  state.enemyIndex  = data.enemyIndex;
-  state.enemyHp     = data.enemyHp;
-  state.enemyMaxHp  = data.enemyMaxHp;
-  state.playerHp    = data.playerHp    ?? 50;
-  state.playerMaxHp = data.playerMaxHp ?? 50;
-  state.inventory   = data.inventory   || {};
+  state.mapIndex   = data.mapIndex    ?? 0;
+  state.stageInMap = data.stageInMap  ?? 0;
+  state.attack     = data.attack      ?? 1;
+  state.gold       = data.gold        ?? 0;
+  state.enemyHp    = data.enemyHp     ?? 0;
+  state.enemyMaxHp = data.enemyMaxHp  ?? 0;
+  state.playerHp   = data.playerHp    ?? 50;
+  state.playerMaxHp= data.playerMaxHp ?? 50;
+  state.inventory  = data.inventory   || {};
+  state.cleared    = data.cleared     || false;
   return true;
 }
 
@@ -488,18 +593,18 @@ function init() {
   updateMuteBtn();
   const loaded = loadGame();
 
-  elAttack.textContent = state.attack;
-  elStage.textContent  = state.stage;
-
   updateStatsDisplay();
   updateInventoryDisplay();
+  updateShopDisplay();
 
-  if (loaded) {
-    const idx = state.enemyIndex % ENEMIES.length;
-    const enemy = ENEMIES[idx];
+  if (loaded && state.cleared) {
+    gameClear();
+  } else if (loaded) {
+    const enemy = MAPS[state.mapIndex].stages[state.stageInMap];
     elEnemyName.textContent = enemy.name;
     elEnemyImg.src = enemy.img;
     elEnemyAtkDisplay.textContent = `ATK ${enemy.atk}  ${(1000 / enemy.atkInterval).toFixed(1)}/s`;
+    updateStageDisplay();
     updateHpDisplay();
     startEnemyAttack(enemy);
     addSystemLog("セーブデータをロードしました");

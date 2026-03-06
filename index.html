@@ -12,14 +12,15 @@
 
     <!-- ヘッダー -->
     <div id="header">
-      <div id="stage-display">ステージ <span id="stage">1</span></div>
+      <div id="stage-display"><span id="map-name">草原</span><span id="stage-num">1 / 10</span></div>
+      <div id="gold-display">G <span id="gold">0</span></div>
       <button id="mute-btn" onclick="toggleMute()"></button>
     </div>
 
     <!-- メインエリア -->
     <div id="main-grid">
 
-      <!-- 左カラム：敵 + バトルログ -->
+      <!-- 左カラム：敵 + バトルログ + システムログ -->
       <div id="left-col">
         <div id="enemy-area">
           <img id="enemy-img" src="enemy_slime.png" alt="敵">
@@ -30,9 +31,13 @@
           </div>
           <div id="enemy-atk-display">ATK 2  0.5/s</div>
         </div>
-        <div class="log-section">
+        <div class="log-section" id="battle-log-section">
           <div class="log-label">バトルログ</div>
           <div id="log-battle"></div>
+        </div>
+        <div class="log-section" id="system-log-section">
+          <div class="log-label">システム</div>
+          <div id="log-system"></div>
         </div>
       </div>
 
@@ -66,9 +71,19 @@
           <div class="panel-label">所持アイテム</div>
           <div id="inventory-list"><span class="empty-msg">まだアイテムがありません</span></div>
         </div>
-        <div class="log-section">
-          <div class="log-label">システム</div>
-          <div id="log-system"></div>
+        <div class="panel" id="shop-panel">
+          <div class="panel-label">ショップ</div>
+          <div id="shop-content">
+            <div class="shop-row">
+              <div class="shop-info">
+                <span class="shop-name">ATK 強化</span>
+                <span class="shop-desc">攻撃力を1上げる</span>
+              </div>
+              <button id="btn-buy-atk" onclick="buyAtk()">
+                <span id="shop-atk-cost">10</span> G
+              </button>
+            </div>
+          </div>
         </div>
         <div id="save-buttons">
           <button onclick="saveGame()">セーブ</button>
