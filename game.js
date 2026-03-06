@@ -14,17 +14,20 @@ const ITEMS = [
 const ITEM_MAP = Object.fromEntries(ITEMS.map(item => [item.id, item]));
 
 // --- 敵データ ---
-// drops: [{ itemId, rate }] の形式で複数追加可能
+// hp          : 最大HP
+// atk         : 攻撃力（プレイヤーへのダメージ）
+// atkInterval : 攻撃間隔 (ms)
+// drops       : [{ itemId, rate }] の形式で複数追加可能
 const ENEMIES = [
-  { name: "スライム", hp: 10,  img: "enemy_slime.png",
+  { name: "スライム", hp: 10,  atk: 2,  atkInterval: 2000, img: "enemy_slime.png",
     drops: [{ itemId: "slime_gel",    rate: 0.6 }] },
-  { name: "ゴブリン", hp: 25,  img: "enemy_goblin.png",
+  { name: "ゴブリン", hp: 25,  atk: 4,  atkInterval: 2000, img: "enemy_goblin.png",
     drops: [{ itemId: "goblin_fang",  rate: 0.5 }, { itemId: "lucky_coin", rate: 0.1 }] },
-  { name: "オーク",   hp: 50,  img: "enemy_orc.png",
+  { name: "オーク",   hp: 50,  atk: 7,  atkInterval: 2000, img: "enemy_orc.png",
     drops: [{ itemId: "orc_hide",     rate: 0.5 }] },
-  { name: "トロル",   hp: 100, img: "enemy_troll.png",
+  { name: "トロル",   hp: 100, atk: 12, atkInterval: 2000, img: "enemy_troll.png",
     drops: [{ itemId: "troll_blood",  rate: 0.4 }, { itemId: "lucky_coin", rate: 0.2 }] },
-  { name: "ドラゴン", hp: 200, img: "enemy_dragon.png",
+  { name: "ドラゴン", hp: 200, atk: 20, atkInterval: 2000, img: "enemy_dragon.png",
     drops: [{ itemId: "dragon_scale", rate: 0.7 }, { itemId: "lucky_coin", rate: 0.3 }] },
 ];
 
@@ -35,6 +38,8 @@ const state = {
   enemyIndex: 0,
   enemyHp: 0,
   enemyMaxHp: 0,
+  playerHp: 50,
+  playerMaxHp: 50,
   inventory: {}, // { itemId: count }
 };
 
@@ -44,18 +49,24 @@ const elEnemyName  = document.getElementById("enemy-name");
 const elEnemyImg   = document.getElementById("enemy-img");
 const elEnemyHp    = document.getElementById("enemy-hp");
 const elEnemyMaxHp = document.getElementById("enemy-max-hp");
-const elHpBar      = document.getElementById("hp-bar");
-const elAttack     = document.getElementById("stat-atk"); // 後方互換
+const elHpBar           = document.getElementById("hp-bar");
+const elEnemyAtkDisplay = document.getElementById("enemy-atk-display");
+const elAttack          = document.getElementById("stat-atk"); // 後方互換
 const elLogBattle  = document.getElementById("log-battle");
 const elLogSystem  = document.getElementById("log-system");
 const elInventory  = document.getElementById("inventory-list");
-const elStatAtk    = document.getElementById("stat-atk");
-const elStatStr    = document.getElementById("stat-str");
-const elStatVit    = document.getElementById("stat-vit");
-const elStatInt    = document.getElementById("stat-int");
-const elStatDex    = document.getElementById("stat-dex");
-const elStatAgi    = document.getElementById("stat-agi");
-const elStatLuk    = document.getElementById("stat-luk");
+const elStatAtk         = document.getElementById("stat-atk");
+const elStatStr         = document.getElementById("stat-str");
+const elStatVit         = document.getElementById("stat-vit");
+const elStatInt         = document.getElementById("stat-int");
+const elStatDex         = document.getElementById("stat-dex");
+const elStatAgi         = document.getElementById("stat-agi");
+const elStatLuk         = document.getElementById("stat-luk");
+const elPlayerHpBar     = document.getElementById("player-hp-bar");
+const elPlayerHpDisplay = document.getElementById("player-hp-display");
+const elInfoHit         = document.getElementById("info-hit");
+const elInfoSpd         = document.getElementById("info-spd");
+const elInfoCrit        = document.getElementById("info-crit");
 
 // --- ログ ---
 function addLog(msg) {
@@ -76,6 +87,40 @@ function addSystemLog(msg) {
   }
 }
 
+// --- 敵攻撃インターバル ---
+let enemyAttackIntervalId = null;
+
+function startEnemyAttack(enemy) {
+  clearInterval(enemyAttackIntervalId);
+  enemyAttackIntervalId = setInterval(() => enemyTick(enemy), enemy.atkInterval);
+}
+
+function stopEnemyAttack() {
+  clearInterval(enemyAttackIntervalId);
+  enemyAttackIntervalId = null;
+}
+
+// --- 敵の攻撃処理 ---
+function enemyTick(enemy) {
+  state.playerHp = Math.max(0, state.playerHp - enemy.atk);
+  elPlayerHpBar.style.width = (state.playerHp / state.playerMaxHp * 100) + "%";
+  elPlayerHpDisplay.textContent = `${state.playerHp} / ${state.playerMaxHp}`;
+  addLog(`${enemy.name} の攻撃！ ${enemy.atk} ダメージを受けた`);
+
+  if (state.playerHp <= 0) {
+    stopEnemyAttack();
+    addLog("倒れた…ステージ1からやり直し！");
+    setTimeout(() => {
+      state.playerHp = state.playerMaxHp;
+      state.stage = 1;
+      state.enemyIndex = 0;
+      elStage.textContent = state.stage;
+      spawnEnemy();
+      updateStatsDisplay();
+    }, 2000);
+  }
+}
+
 // --- 敵をセット ---
 function spawnEnemy() {
   const idx = state.enemyIndex % ENEMIES.length;
@@ -84,8 +129,10 @@ function spawnEnemy() {
   state.enemyMaxHp = enemy.hp;
   elEnemyName.textContent = enemy.name;
   elEnemyImg.src = enemy.img;
+  elEnemyAtkDisplay.textContent = `ATK ${enemy.atk}  ${(1000 / enemy.atkInterval).toFixed(1)}/s`;
   updateHpDisplay();
   addLog(`${enemy.name} が現れた！`);
+  startEnemyAttack(enemy);
 }
 
 // --- HP 表示更新 ---
@@ -98,11 +145,28 @@ function updateHpDisplay() {
 
 // --- 攻撃処理 ---
 function tick() {
-  state.enemyHp -= state.attack;
-  addLog(`攻撃！ ${state.attack} ダメージ（残HP: ${Math.max(0, state.enemyHp)}）`);
+  const s = computePlayerStats();
+
+  // DEX: 命中チェック
+  if (Math.random() > s.hitRate) {
+    addLog("ミス！");
+    return;
+  }
+
+  // LUK: クリティカルチェック
+  let dmg = s.totalAtk;
+  let suffix = "";
+  if (Math.random() < s.critChance) {
+    dmg = Math.floor(dmg * 1.5);
+    suffix = " ★クリティカル！";
+  }
+
+  state.enemyHp -= dmg;
+  addLog(`攻撃！ ${dmg} ダメージ（残HP: ${Math.max(0, state.enemyHp)}）${suffix}`);
   updateHpDisplay();
 
   if (state.enemyHp <= 0) {
+    stopEnemyAttack();
     addLog(`${elEnemyName.textContent} を倒した！`);
     playDefeatSound();
     rollDrops(ENEMIES[state.enemyIndex % ENEMIES.length]);
@@ -135,26 +199,67 @@ function toggleMute() {
   updateMuteBtn();
 }
 
-// --- ステータス / インベントリ表示 ---
+// --- ステータス計算 ---
+// STR  → ATK+  (×0.8)
+// INT  → ATK+  (×0.5)
+// VIT  → 自分の最大HP+ (50 + VIT×5)
+// DEX  → 命中率+ (90% + DEX×0.3%, 上限99%)
+// AGI  → 攻撃間隔短縮 (1000ms - AGI×8ms, 下限300ms)
+// LUK  → クリティカル率+ (LUK×2%, 上限50%)
 function computePlayerStats() {
-  const stats = { str: 0, vit: 0, int: 0, dex: 0, agi: 0, luk: 0 };
+  const raw = { str: 0, vit: 0, int: 0, dex: 0, agi: 0, luk: 0 };
   for (const [itemId, count] of Object.entries(state.inventory)) {
     const item = ITEM_MAP[itemId];
     if (!item) continue;
-    for (const s of Object.keys(stats)) stats[s] += item[s] * count;
+    for (const s of Object.keys(raw)) raw[s] += item[s] * count;
   }
-  return stats;
+  return {
+    ...raw,
+    totalAtk:       state.attack + Math.floor(raw.str * 0.8) + Math.floor(raw.int * 0.5),
+    playerMaxHp:    50 + raw.vit * 5,
+    hitRate:        Math.min(0.99, 0.90 + raw.dex * 0.003),
+    attackInterval: Math.max(300, 1000 - raw.agi * 8),
+    critChance:     Math.min(0.50, raw.luk * 0.02),
+  };
+}
+
+// --- 可変攻撃インターバル ---
+let attackIntervalId = null;
+let _lastInterval = -1;
+
+function resetAttackInterval(s) {
+  if (s.attackInterval === _lastInterval && attackIntervalId !== null) return;
+  _lastInterval = s.attackInterval;
+  clearInterval(attackIntervalId);
+  attackIntervalId = setInterval(tick, s.attackInterval);
 }
 
 function updateStatsDisplay() {
   const s = computePlayerStats();
-  elStatAtk.textContent = state.attack;
+
+  // VIT でプレイヤー最大HP変化 → 差分だけ回復
+  if (s.playerMaxHp !== state.playerMaxHp) {
+    const diff = s.playerMaxHp - state.playerMaxHp;
+    state.playerMaxHp = s.playerMaxHp;
+    state.playerHp = Math.min(state.playerMaxHp, state.playerHp + Math.max(0, diff));
+  }
+
+  elStatAtk.textContent = s.totalAtk;
   elStatStr.textContent = s.str;
   elStatVit.textContent = s.vit;
   elStatInt.textContent = s.int;
   elStatDex.textContent = s.dex;
   elStatAgi.textContent = s.agi;
   elStatLuk.textContent = s.luk;
+
+  elPlayerHpBar.style.width = (state.playerHp / state.playerMaxHp * 100) + "%";
+  elPlayerHpDisplay.textContent = `${state.playerHp} / ${state.playerMaxHp}`;
+
+  elInfoHit.textContent  = Math.round(s.hitRate * 100);
+  elInfoSpd.textContent  = (1000 / s.attackInterval).toFixed(1);
+  elInfoCrit.textContent = Math.round(s.critChance * 100);
+
+  resetAttackInterval(s);
 }
 
 function updateInventoryDisplay() {
@@ -224,12 +329,14 @@ function showSaveIndicator() {
 
 function saveData() {
   const data = {
-    stage:       state.stage,
-    attack:      state.attack,
-    enemyIndex:  state.enemyIndex,
-    enemyHp:     state.enemyHp,
-    enemyMaxHp:  state.enemyMaxHp,
-    inventory:   state.inventory,
+    stage:        state.stage,
+    attack:       state.attack,
+    enemyIndex:   state.enemyIndex,
+    enemyHp:      state.enemyHp,
+    enemyMaxHp:   state.enemyMaxHp,
+    playerHp:     state.playerHp,
+    playerMaxHp:  state.playerMaxHp,
+    inventory:    state.inventory,
   };
   localStorage.setItem(SAVE_KEY, JSON.stringify(data));
 }
@@ -249,12 +356,14 @@ function loadGame() {
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) return false;
   const data = JSON.parse(raw);
-  state.stage      = data.stage;
-  state.attack     = data.attack;
-  state.enemyIndex = data.enemyIndex;
-  state.enemyHp    = data.enemyHp;
-  state.enemyMaxHp = data.enemyMaxHp;
-  state.inventory  = data.inventory || {};
+  state.stage       = data.stage;
+  state.attack      = data.attack;
+  state.enemyIndex  = data.enemyIndex;
+  state.enemyHp     = data.enemyHp;
+  state.enemyMaxHp  = data.enemyMaxHp;
+  state.playerHp    = data.playerHp    ?? 50;
+  state.playerMaxHp = data.playerMaxHp ?? 50;
+  state.inventory   = data.inventory   || {};
   return true;
 }
 
@@ -277,15 +386,18 @@ function init() {
 
   if (loaded) {
     const idx = state.enemyIndex % ENEMIES.length;
-    elEnemyName.textContent = ENEMIES[idx].name;
-    elEnemyImg.src = ENEMIES[idx].img;
+    const enemy = ENEMIES[idx];
+    elEnemyName.textContent = enemy.name;
+    elEnemyImg.src = enemy.img;
+    elEnemyAtkDisplay.textContent = `ATK ${enemy.atk}  ${(1000 / enemy.atkInterval).toFixed(1)}/s`;
     updateHpDisplay();
+    startEnemyAttack(enemy);
     addSystemLog("セーブデータをロードしました");
   } else {
     spawnEnemy();
   }
 
-  setInterval(tick, 1000);
+  // 攻撃インターバルはupdateStatsDisplay内のresetAttackIntervalで開始される
   setInterval(autoSave, 5000); // 5秒ごとに自動セーブ
 }
 
