@@ -13,8 +13,7 @@
     <!-- ヘッダー -->
     <div id="header">
       <div id="book-btns">
-        <button class="book-btn" onclick="openModal('item-book')">アイテム図鑑</button>
-        <button class="book-btn" onclick="openModal('monster-book')">モンスター図鑑</button>
+        <button class="book-btn" onclick="openBook('item')">図鑑</button>
       </div>
       <div id="stage-display"><span id="map-name">草原</span><span id="stage-num">1 / 10</span></div>
       <button id="mute-btn" onclick="toggleMute()"></button>
@@ -125,28 +124,23 @@
 
     </div>
   </div>
-  <!-- アイテム図鑑モーダル -->
-  <div id="modal-item-book" class="modal-overlay" onclick="closeModal('item-book')">
+  <!-- 図鑑モーダル（統合） -->
+  <div id="modal-book" class="modal-overlay" onclick="closeBook()">
     <div class="modal-box" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <span>アイテム図鑑</span>
-        <button class="modal-close" onclick="closeModal('item-book')">✕</button>
+      <div class="modal-header book-modal-header">
+        <div class="book-tab-row">
+          <button class="book-tab active" id="tab-item" onclick="switchBookTab('item')">アイテム</button>
+          <button class="book-tab" id="tab-monster" onclick="switchBookTab('monster')">モンスター</button>
+        </div>
+        <button class="modal-close" onclick="closeBook()">✕</button>
       </div>
-      <div class="modal-body" id="item-book-content"></div>
+      <div class="modal-body" id="book-content"></div>
     </div>
   </div>
 
-  <!-- モンスター図鑑モーダル -->
-  <div id="modal-monster-book" class="modal-overlay" onclick="closeModal('monster-book')">
-    <div class="modal-box" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <span>モンスター図鑑</span>
-        <button class="modal-close" onclick="closeModal('monster-book')">✕</button>
-      </div>
-      <div class="modal-body" id="monster-book-content"></div>
-    </div>
-  </div>
-
+  <script src="data/items.js"></script>
+  <script src="data/maps.js"></script>
+  <script src="data/shop.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

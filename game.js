@@ -1,127 +1,34 @@
-// --- ボーナスティア閾値 ---
-// BONUS_THRESHOLDS[i] 個以上で bonus[i] が加算される
-const BONUS_THRESHOLDS = [100, 500, 999];
+// --- 敵パラメーター計算 ---
+function makeEnemy(mapIndex, stageInMap) {
+  const def    = MAP_DEFS[mapIndex];
+  const isBoss = stageInMap === 9;
+  const enemyDef = isBoss
+    ? def.boss
+    : def.enemies[Math.floor(Math.random() * def.enemies.length)];
 
-function getItemTier(count) {
-  if (count >= 999) return 3;
-  if (count >= 500) return 2;
-  if (count >= 100) return 1;
-  return 0;
+  const mult     = 1 + mapIndex * 0.8;
+  const si       = stageInMap;
+  const hpMult   = enemyDef.hpMult  ?? 1.0;
+  const atkMult  = enemyDef.atkMult ?? 1.0;
+  const bossHpM  = def.isFinal ? 10 : 6;
+  const bossAtkM = def.isFinal ? 4  : 3;
+
+  const baseHp   = Math.round(20 * mult * (1 + si * 0.15));
+  const baseAtk  = Math.round(3  * Math.sqrt(mult) * (1 + si * 0.08));
+  const baseGold = Math.round(5  * mult * (1 + si * 0.1));
+
+  return {
+    name:        enemyDef.name,
+    img:         enemyDef.img,
+    drops:       enemyDef.drops,
+    isBoss,
+    isFinal:     def.isFinal || false,
+    hp:          isBoss ? Math.round(baseHp  * bossHpM  * hpMult)  : Math.round(baseHp  * hpMult),
+    atk:         isBoss ? Math.round(baseAtk * bossAtkM * atkMult) : Math.round(baseAtk * atkMult),
+    atkInterval: isBoss ? 1500 : 2000,
+    gold:        isBoss ? Math.round(baseGold * 5) : baseGold,
+  };
 }
-
-// --- アイテムテーブル ---
-// 基本効果: 個数によらず×1固定（0〜99個でも100個でも同じ）
-// bonus[i]: BONUS_THRESHOLDS[i] 個到達で加算されるフラットボーナス（累積）
-const ITEMS = [
-  { id: "slime_gel",    name: "スライムゼリー",
-    str: 0, vit: 1, int: 0, dex: 0, agi: 1, luk: 0,
-    bonus: [
-      { str: 0, vit:  3, int: 0, dex: 0, agi:  3, luk: 0 },
-      { str: 0, vit:  5, int: 0, dex: 0, agi:  5, luk: 2 },
-      { str: 0, vit: 10, int: 0, dex: 0, agi:  8, luk: 5 },
-    ] },
-  { id: "goblin_fang",  name: "ゴブリンの牙",
-    str: 2, vit: 0, int: 0, dex: 1, agi: 0, luk: 0,
-    bonus: [
-      { str:  5, vit: 0, int: 0, dex:  3, agi: 0, luk: 0 },
-      { str: 10, vit: 0, int: 0, dex:  6, agi: 3, luk: 0 },
-      { str: 18, vit: 0, int: 0, dex: 10, agi: 5, luk: 0 },
-    ] },
-  { id: "orc_hide",     name: "オークの皮",
-    str: 1, vit: 3, int: 0, dex: 0, agi: 0, luk: 0,
-    bonus: [
-      { str:  3, vit:  8, int: 0, dex: 0, agi: 0, luk: 0 },
-      { str:  6, vit: 15, int: 0, dex: 3, agi: 0, luk: 0 },
-      { str: 10, vit: 25, int: 0, dex: 5, agi: 0, luk: 0 },
-    ] },
-  { id: "troll_blood",  name: "トロルの血",
-    str: 0, vit: 2, int: 2, dex: 0, agi: 0, luk: 1,
-    bonus: [
-      { str: 0, vit:  5, int:  5, dex: 0, agi: 0, luk:  3 },
-      { str: 0, vit: 10, int: 10, dex: 0, agi: 0, luk:  6 },
-      { str: 0, vit: 18, int: 18, dex: 0, agi: 0, luk: 10 },
-    ] },
-  { id: "dragon_scale", name: "ドラゴンの鱗",
-    str: 3, vit: 3, int: 3, dex: 1, agi: 1, luk: 2,
-    bonus: [
-      { str:  8, vit:  8, int:  8, dex:  3, agi:  3, luk:  5 },
-      { str: 15, vit: 15, int: 15, dex:  6, agi:  6, luk: 10 },
-      { str: 25, vit: 25, int: 25, dex: 10, agi: 10, luk: 18 },
-    ] },
-  { id: "lucky_coin",   name: "ラッキーコイン",
-    str: 0, vit: 0, int: 0, dex: 0, agi: 0, luk: 5,
-    bonus: [
-      { str: 0, vit: 0, int: 0, dex: 0, agi:  3, luk: 10 },
-      { str: 0, vit: 0, int: 0, dex: 3, agi:  6, luk: 20 },
-      { str: 0, vit: 0, int: 0, dex: 5, agi: 10, luk: 35 },
-    ] },
-];
-
-// アイテムIDから参照するためのマップ
-const ITEM_MAP = Object.fromEntries(ITEMS.map(item => [item.id, item]));
-
-// --- マップ定義 ---
-// 1マップ=10ステージ、ステージ10はボス
-// isFinal: true のボスを倒すとゲームクリア
-const MAP_DEFS = [
-  { name: "草原",   enemies: ["スライム",    "野うさぎ",     "ゴブリン",     "ゴブリン2"],       boss: "草原の王",   imgs: ["enemy_slime.png",  "enemy_slime.png",  "enemy_goblin.png",  "enemy_goblin.png"],  bossImg: "enemy_goblin.png",  drops: ["slime_gel",   "goblin_fang"]  },
-  { name: "森",     enemies: ["ウルフ",       "キノコ人",     "ウッドゴーレム"], boss: "森の主",     imgs: ["enemy_goblin.png", "enemy_goblin.png", "enemy_orc.png"],     bossImg: "enemy_orc.png",     drops: ["slime_gel",   "goblin_fang"]  },
-  { name: "洞窟",   enemies: ["コウモリ",     "ゴブリン長",   "ストーンゴーレム"],boss:"岩窟の番人", imgs: ["enemy_goblin.png", "enemy_goblin.png", "enemy_orc.png"],     bossImg: "enemy_orc.png",     drops: ["orc_hide",    "goblin_fang"]  },
-  { name: "砂漠",   enemies: ["サンドワーム", "スコーピオン", "ミイラ兵"],       boss: "砂漠の覇者", imgs: ["enemy_orc.png",    "enemy_orc.png",    "enemy_troll.png"],   bossImg: "enemy_troll.png",   drops: ["orc_hide",    "goblin_fang"]  },
-  { name: "雪原",   enemies: ["雪うさぎ",     "アイス魔",     "イエティ"],       boss: "氷の巨人",   imgs: ["enemy_orc.png",    "enemy_orc.png",    "enemy_troll.png"],   bossImg: "enemy_troll.png",   drops: ["troll_blood", "orc_hide"]     },
-  { name: "火山",   enemies: ["ラバスライム", "炎の精霊",     "マグマゴーレム"], boss: "火竜",       imgs: ["enemy_troll.png",  "enemy_troll.png",  "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["troll_blood", "orc_hide"]     },
-  { name: "海底",   enemies: ["人魚戦士",     "深海魚",       "クラーケン"],     boss: "海底の王",   imgs: ["enemy_troll.png",  "enemy_troll.png",  "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["dragon_scale","troll_blood"]  },
-  { name: "天空",   enemies: ["天空騎士",     "嵐の精霊",     "古代竜"],         boss: "天空の番人", imgs: ["enemy_dragon.png", "enemy_dragon.png", "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["dragon_scale","troll_blood"]  },
-  { name: "魔界",   enemies: ["デーモン",     "堕天使",       "魔王の将"],       boss: "魔王の使徒", imgs: ["enemy_dragon.png", "enemy_dragon.png", "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["dragon_scale","lucky_coin"]   },
-  { name: "魔王城", enemies: ["魔王親衛隊",   "魔王の騎士",   "魔王の怒り"],     boss: "魔王",       imgs: ["enemy_dragon.png", "enemy_dragon.png", "enemy_dragon.png"],  bossImg: "enemy_dragon.png",  drops: ["dragon_scale","lucky_coin"],  isFinal: true },
-];
-
-// マップデータを生成（10マップ×10ステージ = 100エネミー）
-function buildMaps() {
-  return MAP_DEFS.map((def, mi) => {
-    const mult = 1 + mi * 0.8; // マップ係数（草原:1.0 〜 魔王城:8.2）
-    const dropList = def.drops.map(id => ({ itemId: id, rate: 0.5 }));
-    const bossDrop = def.drops.map(id => ({ itemId: id, rate: 0.9 }));
-    const stages = [];
-    for (let si = 0; si < 9; si++) {
-      const ni = si % def.enemies.length;
-      stages.push({
-        name:        def.enemies[ni],
-        hp:          Math.round(20  * mult * (1 + si * 0.15)),
-        atk:         Math.round(3   * Math.sqrt(mult) * (1 + si * 0.08)),
-        atkInterval: 2000,
-        gold:        Math.round(5   * mult * (1 + si * 0.1)),
-        img:         def.imgs[ni],
-        drops:       dropList,
-      });
-    }
-    const bossHpMult = def.isFinal ? 10 : 6;
-    const bossAtkMult = def.isFinal ? 4 : 3;
-    const base = stages[8];
-    stages.push({
-      name:        def.boss,
-      hp:          Math.round(base.hp   * bossHpMult),
-      atk:         Math.round(base.atk  * bossAtkMult),
-      atkInterval: 1500,
-      gold:        Math.round(base.gold * 5),
-      img:         def.bossImg,
-      drops:       bossDrop,
-      isBoss:      true,
-      isFinal:     def.isFinal || false,
-    });
-    return { name: def.name, stages };
-  });
-}
-
-const MAPS = buildMaps();
-
-// --- ショップ定義 ---
-const SHOP_DEFS = {
-  vit: { baseCost: 15, mult: 1.4, stat: "vit", amount: 2 },
-  agi: { baseCost: 20, mult: 1.4, stat: "agi", amount: 3 },
-  dex: { baseCost: 15, mult: 1.4, stat: "dex", amount: 3 },
-  luk: { baseCost: 25, mult: 1.5, stat: "luk", amount: 3 },
-};
 
 function shopStatCost(key) {
   const def = SHOP_DEFS[key];
@@ -134,17 +41,19 @@ function healCost() {
 
 // --- ゲーム状態 ---
 const state = {
-  mapIndex:   0,  // 0〜9（マップ番号）
-  stageInMap: 0,  // 0〜9（マップ内ステージ番号）
-  attack:     1,
-  gold:       0,
-  enemyHp:    0,
-  enemyMaxHp: 0,
-  playerHp:   50,
-  playerMaxHp:50,
-  inventory:  {}, // { itemId: count }
-  cleared:    false,
-  shopLevels: { vit: 0, agi: 0, dex: 0, luk: 0 },
+  mapIndex:     0,
+  stageInMap:   0,
+  attack:       1,
+  gold:         0,
+  enemyHp:      0,
+  enemyMaxHp:   0,
+  playerHp:     50,
+  playerMaxHp:  50,
+  inventory:    {},
+  cleared:      false,
+  shopLevels:   { vit: 0, agi: 0, dex: 0, luk: 0 },
+  currentEnemy: null,
+  monsterKills: {}, // { "0:スライム": count, ... }
 };
 
 // --- DOM 参照 ---
@@ -174,32 +83,20 @@ const elInfoCrit        = document.getElementById("info-crit");
 const elGold        = document.getElementById("gold");
 const elBtnHeal     = document.getElementById("btn-heal");
 const elHealCost    = document.getElementById("shop-heal-cost");
-const elBtnVit      = document.getElementById("btn-buy-vit");
-const elVitCost     = document.getElementById("shop-vit-cost");
-const elBtnAgi      = document.getElementById("btn-buy-agi");
-const elAgiCost     = document.getElementById("shop-agi-cost");
-const elBtnDex      = document.getElementById("btn-buy-dex");
-const elDexCost     = document.getElementById("shop-dex-cost");
-const elBtnLuk      = document.getElementById("btn-buy-luk");
-const elLukCost     = document.getElementById("shop-luk-cost");
 
 // --- ログ ---
 function addLog(msg) {
   const line = document.createElement("div");
   line.textContent = msg;
   elLogBattle.prepend(line);
-  while (elLogBattle.children.length > 10) {
-    elLogBattle.removeChild(elLogBattle.lastChild);
-  }
+  while (elLogBattle.children.length > 10) elLogBattle.removeChild(elLogBattle.lastChild);
 }
 
 function addSystemLog(msg) {
   const line = document.createElement("div");
   line.textContent = msg;
   elLogSystem.prepend(line);
-  while (elLogSystem.children.length > 10) {
-    elLogSystem.removeChild(elLogSystem.lastChild);
-  }
+  while (elLogSystem.children.length > 10) elLogSystem.removeChild(elLogSystem.lastChild);
 }
 
 // --- 敵攻撃インターバル ---
@@ -215,7 +112,6 @@ function stopEnemyAttack() {
   enemyAttackIntervalId = null;
 }
 
-// --- 敵の攻撃処理 ---
 function enemyTick(enemy) {
   state.playerHp = Math.max(0, state.playerHp - enemy.atk);
   elPlayerHpBar.style.width = (state.playerHp / state.playerMaxHp * 100) + "%";
@@ -226,8 +122,8 @@ function enemyTick(enemy) {
     stopEnemyAttack();
     addLog("倒れた…マップ1からやり直し！");
     setTimeout(() => {
-      state.playerHp  = state.playerMaxHp;
-      state.mapIndex  = 0;
+      state.playerHp   = state.playerMaxHp;
+      state.mapIndex   = 0;
       state.stageInMap = 0;
       spawnEnemy();
       updateStatsDisplay();
@@ -237,83 +133,141 @@ function enemyTick(enemy) {
 
 // --- ステージ表示更新 ---
 function updateStageDisplay() {
-  elMapName.textContent  = MAPS[state.mapIndex].name;
+  elMapName.textContent  = MAP_DEFS[state.mapIndex].name;
   elStageNum.textContent = `${state.stageInMap + 1} / 10`;
 }
 
-// --- 敵をセット ---
+// --- 敵をセット（ボス以外はランダム） ---
 function spawnEnemy() {
   if (state.cleared) return;
-  const enemy = MAPS[state.mapIndex].stages[state.stageInMap];
-  state.enemyHp    = enemy.hp;
-  state.enemyMaxHp = enemy.hp;
-  elEnemyName.textContent = enemy.name;
-  elEnemyImg.src          = enemy.img;
+  const enemy = makeEnemy(state.mapIndex, state.stageInMap);
+  state.currentEnemy = enemy;
+  state.enemyHp      = enemy.hp;
+  state.enemyMaxHp   = enemy.hp;
+
+  elEnemyName.textContent       = enemy.name;
+  elEnemyImg.src                = enemy.img;
   elEnemyAtkDisplay.textContent = `ATK ${enemy.atk}  ${(1000 / enemy.atkInterval).toFixed(1)}/s`;
   updateStageDisplay();
   updateHpDisplay();
-  if (enemy.isBoss) {
-    addLog(`★ BOSS: ${enemy.name} が現れた！`);
-  } else {
-    addLog(`${enemy.name} が現れた！`);
-  }
+
+  if (enemy.isBoss) addLog(`★ BOSS: ${enemy.name} が現れた！`);
+  else              addLog(`${enemy.name} が現れた！`);
+
   startEnemyAttack(enemy);
 }
 
-// --- HP 表示更新 ---
 function updateHpDisplay() {
-  elEnemyHp.textContent = Math.max(0, state.enemyHp);
+  elEnemyHp.textContent    = Math.max(0, state.enemyHp);
   elEnemyMaxHp.textContent = state.enemyMaxHp;
   const pct = (state.enemyHp / state.enemyMaxHp) * 100;
   elHpBar.style.width = Math.max(0, pct) + "%";
+}
+
+// --- ダメージ数値エフェクト ---
+const elEnemyArea = document.getElementById("enemy-area");
+
+function showDamageNumber(text, type) {
+  const imgRect  = elEnemyImg.getBoundingClientRect();
+  const areaRect = elEnemyArea.getBoundingClientRect();
+  const centerX  = imgRect.left + imgRect.width  / 2 - areaRect.left;
+  const topY     = imgRect.top  - areaRect.top;
+
+  const el = document.createElement("span");
+  el.className  = "damage-number" + (type ? " " + type : "");
+  el.textContent = text;
+
+  const spread = type === "crit" ? 55 : 40;
+  el.style.left = (centerX + (Math.random() * spread * 2 - spread)) + "px";
+  el.style.top  = (topY + Math.random() * 30) + "px";
+
+  elEnemyArea.appendChild(el);
+  el.addEventListener("animationend", () => el.remove());
+}
+
+function flashEnemyHit() {
+  elEnemyImg.classList.remove("enemy-hit");
+  void elEnemyImg.offsetWidth;
+  elEnemyImg.classList.add("enemy-hit");
+  elEnemyImg.addEventListener("animationend", () => {
+    elEnemyImg.classList.remove("enemy-hit");
+  }, { once: true });
 }
 
 // --- 攻撃処理 ---
 function tick() {
   const s = computePlayerStats();
 
-  // DEX: 命中チェック
   if (Math.random() > s.hitRate) {
     addLog("ミス！");
+    showDamageNumber("MISS", "miss");
     return;
   }
 
-  // LUK: クリティカルチェック
   let dmg = s.totalAtk;
   let suffix = "";
+  let dmgType = null;
   if (Math.random() < s.critChance) {
     dmg = Math.floor(dmg * 1.5);
-    suffix = " ★クリティカル！";
+    suffix  = " ★クリティカル！";
+    dmgType = "crit";
   }
 
   state.enemyHp -= dmg;
+  showDamageNumber(dmg, dmgType);
+  flashEnemyHit();
   addLog(`攻撃！ ${dmg} ダメージ（残HP: ${Math.max(0, state.enemyHp)}）${suffix}`);
   updateHpDisplay();
 
   if (state.enemyHp <= 0) {
     stopEnemyAttack();
-    const defeatedEnemy = MAPS[state.mapIndex].stages[state.stageInMap];
+    const defeatedEnemy = state.currentEnemy;
     const earned = Math.floor(defeatedEnemy.gold * (0.75 + Math.random() * 0.5));
     state.gold += earned;
     addLog(`${defeatedEnemy.name} を倒した！ +${earned}G`);
     playDefeatSound();
     updateShopDisplay();
     rollDrops(defeatedEnemy);
+    recordKill(state.mapIndex, defeatedEnemy.name);
 
-    if (defeatedEnemy.isFinal) {
-      gameClear();
-      return;
-    }
+    if (defeatedEnemy.isFinal) { gameClear(); return; }
 
     state.stageInMap++;
     if (state.stageInMap >= 10) {
       state.stageInMap = 0;
       state.mapIndex++;
-      if (state.mapIndex >= MAPS.length) { gameClear(); return; }
-      addSystemLog(`★ マップクリア！ 「${MAPS[state.mapIndex].name}」へ！`);
+      if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
+      addSystemLog(`★ マップクリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
     }
     spawnEnemy();
   }
+}
+
+// --- モンスター討伐記録 ---
+function recordKill(mapIndex, enemyName) {
+  const key  = `${mapIndex}:${enemyName}`;
+  const prev = state.monsterKills[key] || 0;
+  state.monsterKills[key] = prev + 1;
+  const cur  = state.monsterKills[key];
+
+  BONUS_THRESHOLDS.forEach(thresh => {
+    if (prev < thresh && cur >= thresh) {
+      addSystemLog(`${enemyName} ${thresh}体討伐ボーナス解放！`);
+    }
+  });
+
+  // 999体達成でマップ制覇チェック
+  if (cur === 999) {
+    const def = MAP_DEFS[mapIndex];
+    if (def.mapBonus) {
+      const allMax = [...def.enemies, def.boss].every(e =>
+        (state.monsterKills[`${mapIndex}:${e.name}`] || 0) >= 999
+      );
+      if (allMax) addSystemLog(`★★ ${def.name}マップ制覇！全モンスター999体ボーナス解放！`);
+    }
+  }
+
+  updateStatsDisplay();
 }
 
 // --- ゲームクリア ---
@@ -332,7 +286,7 @@ function updateShopDisplay() {
   elGold.textContent = state.gold;
 
   const hc = healCost();
-  elHealCost.textContent  = hc;
+  elHealCost.textContent = hc;
   elBtnHeal.disabled = state.gold < hc || state.playerHp >= state.playerMaxHp;
 
   for (const key of Object.keys(SHOP_DEFS)) {
@@ -359,7 +313,7 @@ function buyShopStat(key) {
   state.shopLevels[key]++;
   updateShopDisplay();
   updateStatsDisplay();
-  const def = SHOP_DEFS[key];
+  const def   = SHOP_DEFS[key];
   const total = state.shopLevels[key] * def.amount;
   addSystemLog(`${key.toUpperCase()}強化！ ${def.stat.toUpperCase()}が合計+${total} (次回: ${shopStatCost(key)}G)`);
 }
@@ -387,20 +341,19 @@ function toggleMute() {
 }
 
 // --- ステータス計算 ---
-// STR  → ATK+  (×0.8)
-// INT  → ATK+  (×0.5)
-// VIT  → 自分の最大HP+ (50 + VIT×5)
-// DEX  → 命中率+ (90% + DEX×0.3%, 上限99%)
-// AGI  → 攻撃間隔短縮 (1000ms - AGI×8ms, 下限300ms)
-// LUK  → クリティカル率+ (LUK×2%, 上限50%)
+// STR → ATK+ (×0.8)  INT → ATK+ (×0.5)
+// VIT → 最大HP (50 + VIT×5)
+// DEX → 命中率 (90% + DEX×0.3%, 上限99%)
+// AGI → 攻撃間隔 (1000ms - AGI×8ms, 下限300ms)
+// LUK → クリティカル率 (LUK×2%, 上限50%)
 function computePlayerStats() {
   const raw = { str: 0, vit: 0, int: 0, dex: 0, agi: 0, luk: 0 };
+
+  // アイテムボーナス
   for (const [itemId, count] of Object.entries(state.inventory)) {
     const item = ITEM_MAP[itemId];
     if (!item) continue;
-    // 基本効果: 個数によらずフラット×1
     for (const s of Object.keys(raw)) raw[s] += item[s];
-    // ボーナスティア: 閾値到達ごとにフラット加算
     if (item.bonus) {
       item.bonus.forEach((tier, i) => {
         if (count >= BONUS_THRESHOLDS[i]) {
@@ -409,10 +362,35 @@ function computePlayerStats() {
       });
     }
   }
-  // ショップ強化ボーナス
+
+  // ショップボーナス
   for (const [key, def] of Object.entries(SHOP_DEFS)) {
     raw[def.stat] += state.shopLevels[key] * def.amount;
   }
+
+  // モンスター討伐ボーナス
+  for (const [mi, def] of MAP_DEFS.entries()) {
+    const allDefs = [...def.enemies, def.boss];
+    for (const enemyDef of allDefs) {
+      if (!enemyDef.killBonus) continue;
+      const kills = state.monsterKills[`${mi}:${enemyDef.name}`] || 0;
+      enemyDef.killBonus.forEach((tier, i) => {
+        if (kills >= BONUS_THRESHOLDS[i]) {
+          for (const s of Object.keys(raw)) raw[s] += (tier[s] || 0);
+        }
+      });
+    }
+    // マップ制覇ボーナス
+    if (def.mapBonus) {
+      const allMax = allDefs.every(e =>
+        (state.monsterKills[`${mi}:${e.name}`] || 0) >= 999
+      );
+      if (allMax) {
+        for (const s of Object.keys(raw)) raw[s] += (def.mapBonus[s] || 0);
+      }
+    }
+  }
+
   return {
     ...raw,
     totalAtk:       state.attack + Math.floor(raw.str * 0.8) + Math.floor(raw.int * 0.5),
@@ -437,7 +415,6 @@ function resetAttackInterval(s) {
 function updateStatsDisplay() {
   const s = computePlayerStats();
 
-  // VIT でプレイヤー最大HP変化 → 差分だけ回復
   if (s.playerMaxHp !== state.playerMaxHp) {
     const diff = s.playerMaxHp - state.playerMaxHp;
     state.playerMaxHp = s.playerMaxHp;
@@ -462,7 +439,6 @@ function updateStatsDisplay() {
   resetAttackInterval(s);
 }
 
-// アイテムの現在合計効果を返す（基本×1 + 達成済みボーナス累積）
 function calcItemEffect(item, count) {
   const eff = { str: item.str, vit: item.vit, int: item.int,
                 dex: item.dex, agi: item.agi, luk: item.luk };
@@ -476,10 +452,9 @@ function calcItemEffect(item, count) {
   return eff;
 }
 
-// ステータスオブジェクトを "STR+2 VIT+3" 形式に変換
 function statStr(obj, prefix = "") {
   return ["str","vit","int","dex","agi","luk"]
-    .filter(s => obj[s] > 0)
+    .filter(s => (obj[s] || 0) > 0)
     .map(s => `${prefix}${s.toUpperCase()}+${obj[s]}`)
     .join(" ") || "—";
 }
@@ -493,20 +468,14 @@ function updateInventoryDisplay() {
       const tier  = getItemTier(count);
       const next  = BONUS_THRESHOLDS[tier];
 
-      const tierBadge = tier > 0
-        ? `<span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>`
-        : `<span class="tier-badge tier-0">T0</span>`;
-
-      const nextHint = next !== undefined
+      const tierBadge = `<span class="tier-badge tier-${tier}">${tier > 0 ? TIER_LABELS[tier] : "T0"}</span>`;
+      const nextHint  = next !== undefined
         ? `<span class="inv-next">→${next}</span>`
         : `<span class="inv-next max">MAX</span>`;
 
-      // 現在の合計効果
       const curEff  = calcItemEffect(item, count);
       const curText = statStr(curEff);
-
-      // 次ティアで加わるボーナス
-      let nextText = "";
+      let nextText  = "";
       if (next !== undefined && item.bonus && item.bonus[tier]) {
         nextText = `<span class="inv-next-bonus">次(${next}個): +${statStr(item.bonus[tier])}</span>`;
       }
@@ -537,13 +506,11 @@ function rollDrops(enemy) {
       if (!item) return;
       const prevCount = state.inventory[item.id] || 0;
       state.inventory[item.id] = prevCount + 1;
-      const newCount  = state.inventory[item.id];
-      const prevTier  = getItemTier(prevCount);
-      const newTier   = getItemTier(newCount);
+      const newCount = state.inventory[item.id];
+      const prevTier = getItemTier(prevCount);
+      const newTier  = getItemTier(newCount);
       addSystemLog(`${item.name} を入手！ (×${newCount})`);
-      if (newTier > prevTier) {
-        addSystemLog(`★ ${item.name} Tier${newTier} 解放！ボーナス加算！`);
-      }
+      if (newTier > prevTier) addSystemLog(`★ ${item.name} Tier${newTier} 解放！ボーナス加算！`);
       updateStatsDisplay();
       updateInventoryDisplay();
     }
@@ -552,9 +519,9 @@ function rollDrops(enemy) {
 
 function playDefeatSound() {
   if (soundMuted) return;
-  const notes = [523, 659, 784]; // C5 E5 G5
+  const notes = [523, 659, 784];
   notes.forEach((freq, i) => {
-    const osc = audioCtx.createOscillator();
+    const osc  = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
     gain.connect(audioCtx.destination);
@@ -576,26 +543,24 @@ let saveIndicatorTimer = null;
 function showSaveIndicator() {
   elSaveIndicator.classList.add("show");
   clearTimeout(saveIndicatorTimer);
-  saveIndicatorTimer = setTimeout(() => {
-    elSaveIndicator.classList.remove("show");
-  }, 1500);
+  saveIndicatorTimer = setTimeout(() => elSaveIndicator.classList.remove("show"), 1500);
 }
 
 function saveData() {
-  const data = {
-    mapIndex:    state.mapIndex,
-    stageInMap:  state.stageInMap,
-    attack:      state.attack,
-    gold:        state.gold,
-    enemyHp:     state.enemyHp,
-    enemyMaxHp:  state.enemyMaxHp,
-    playerHp:    state.playerHp,
-    playerMaxHp: state.playerMaxHp,
-    inventory:   state.inventory,
-    cleared:     state.cleared,
-    shopLevels:  state.shopLevels,
-  };
-  localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  localStorage.setItem(SAVE_KEY, JSON.stringify({
+    mapIndex:     state.mapIndex,
+    stageInMap:   state.stageInMap,
+    attack:       state.attack,
+    gold:         state.gold,
+    enemyHp:      state.enemyHp,
+    enemyMaxHp:   state.enemyMaxHp,
+    playerHp:     state.playerHp,
+    playerMaxHp:  state.playerMaxHp,
+    inventory:    state.inventory,
+    cleared:      state.cleared,
+    shopLevels:   state.shopLevels,
+    monsterKills: state.monsterKills,
+  }));
 }
 
 function saveGame() {
@@ -613,17 +578,18 @@ function loadGame() {
   const raw = localStorage.getItem(SAVE_KEY);
   if (!raw) return false;
   const data = JSON.parse(raw);
-  state.mapIndex   = data.mapIndex    ?? 0;
-  state.stageInMap = data.stageInMap  ?? 0;
-  state.attack     = data.attack      ?? 1;
-  state.gold       = data.gold        ?? 0;
-  state.enemyHp    = data.enemyHp     ?? 0;
-  state.enemyMaxHp = data.enemyMaxHp  ?? 0;
-  state.playerHp   = data.playerHp    ?? 50;
-  state.playerMaxHp= data.playerMaxHp ?? 50;
-  state.inventory  = data.inventory   || {};
-  state.cleared    = data.cleared     || false;
-  state.shopLevels = data.shopLevels  || { vit: 0, agi: 0, dex: 0, luk: 0 };
+  state.mapIndex     = data.mapIndex     ?? 0;
+  state.stageInMap   = data.stageInMap   ?? 0;
+  state.attack       = data.attack       ?? 1;
+  state.gold         = data.gold         ?? 0;
+  state.enemyHp      = data.enemyHp      ?? 0;
+  state.enemyMaxHp   = data.enemyMaxHp   ?? 0;
+  state.playerHp     = data.playerHp     ?? 50;
+  state.playerMaxHp  = data.playerMaxHp  ?? 50;
+  state.inventory    = data.inventory    || {};
+  state.cleared      = data.cleared      || false;
+  state.shopLevels   = data.shopLevels   || { vit: 0, agi: 0, dex: 0, luk: 0 };
+  state.monsterKills = data.monsterKills || {};
   return true;
 }
 
@@ -633,22 +599,38 @@ function resetSave() {
   location.reload();
 }
 
-// --- 図鑑モーダル ---
-function openModal(id) {
-  if (id === "item-book")    renderItemBook();
-  if (id === "monster-book") renderMonsterBook();
-  document.getElementById(`modal-${id}`).classList.add("open");
+// --- 図鑑 ---
+let currentBookTab = "item";
+
+function openBook(tab) {
+  currentBookTab = tab;
+  renderBook();
+  document.getElementById("modal-book").classList.add("open");
 }
 
-function closeModal(id) {
-  document.getElementById(`modal-${id}`).classList.remove("open");
+function closeBook() {
+  document.getElementById("modal-book").classList.remove("open");
+}
+
+function switchBookTab(tab) {
+  currentBookTab = tab;
+  renderBook();
+  document.getElementById("tab-item").classList.toggle("active", tab === "item");
+  document.getElementById("tab-monster").classList.toggle("active", tab === "monster");
+}
+
+function renderBook() {
+  document.getElementById("tab-item").classList.toggle("active", currentBookTab === "item");
+  document.getElementById("tab-monster").classList.toggle("active", currentBookTab === "monster");
+  if (currentBookTab === "item") renderItemBook();
+  else                           renderMonsterBook();
 }
 
 function renderItemBook() {
   const TIER_LABELS = ["T0", "T1", "T2", "T3"];
   const cards = ITEMS.map(item => {
-    const count = state.inventory[item.id] || 0;
-    const tier  = getItemTier(count);
+    const count  = state.inventory[item.id] || 0;
+    const tier   = getItemTier(count);
     const unseen = count === 0;
 
     const tierRows = item.bonus.map((bonus, i) => {
@@ -673,36 +655,90 @@ function renderItemBook() {
     </div>`;
   }).join("");
 
-  document.getElementById("item-book-content").innerHTML =
+  document.getElementById("book-content").innerHTML =
     `<div class="book-item-grid">${cards}</div>`;
 }
 
 function renderMonsterBook() {
-  const sections = MAPS.map((map, mi) => {
-    const rows = map.stages.map((enemy, si) => {
-      const seen   = mi < state.mapIndex || (mi === state.mapIndex && si <= state.stageInMap);
-      const isBoss = si === 9;
-      const drops  = seen
-        ? enemy.drops.map(d => `${ITEM_MAP[d.itemId]?.name}(${Math.round(d.rate * 100)}%)`).join(" / ")
-        : "—";
+  const TIER_LABELS = ["T0", "T1", "T2", "T3"];
 
-      return `<div class="book-monster-row ${!seen ? "unseen" : ""} ${isBoss ? "boss-row" : ""}">
-        <span class="book-monster-name ${isBoss ? "boss" : ""}">${seen ? (isBoss ? "★ " + enemy.name : enemy.name) : "???"}</span>
-        ${seen ? `
-        <span class="book-stat-val">HP ${enemy.hp}</span>
-        <span class="book-stat-val">ATK ${enemy.atk}</span>
-        <span class="book-stat-val">${(1000 / enemy.atkInterval).toFixed(1)}/s</span>
-        <span class="book-drop-list">${drops}</span>` : ""}
+  const sections = MAP_DEFS.map((def, mi) => {
+    const mapReached = mi <= state.mapIndex;
+    const mapName    = mapReached ? `${mi + 1}. ${def.name}` : `${mi + 1}. ???`;
+
+    const allDefs = [...def.enemies, def.boss];
+
+    // マップ制覇チェック
+    const allMax = mapReached && allDefs.every(e =>
+      (state.monsterKills[`${mi}:${e.name}`] || 0) >= 999
+    );
+
+    const cards = allDefs.map((enemyDef, idx) => {
+      const isBoss = idx === def.enemies.length;
+      const key    = `${mi}:${enemyDef.name}`;
+      const kills  = state.monsterKills[key] || 0;
+      const tier   = getItemTier(kills);
+      const next   = BONUS_THRESHOLDS[tier];
+
+      if (!mapReached) {
+        return `<div class="book-monster-card unseen">
+          <img class="book-monster-img" src="${enemyDef.img}">
+          <div class="book-monster-info">
+            <div class="book-monster-head">
+              <span class="book-monster-name ${isBoss ? "boss" : ""}">???</span>
+            </div>
+          </div>
+        </div>`;
+      }
+
+      const nextHint = next !== undefined
+        ? `→${next}体`
+        : `<span class="kill-max">MAX</span>`;
+
+      const killTiers = (enemyDef.killBonus || []).map((bonus, i) => {
+        const thresh  = BONUS_THRESHOLDS[i];
+        const cleared = kills >= thresh;
+        return `<div class="book-tier-line ${cleared ? "cleared" : "locked"}">
+          <span class="tier-badge tier-${cleared ? i + 1 : 0}">${TIER_LABELS[i + 1]}</span>
+          <span>${thresh}体: ${statStr(bonus)}</span>
+          ${cleared ? "<span>✓</span>" : ""}
+        </div>`;
+      }).join("");
+
+      const drops = enemyDef.drops
+        .map(d => `${ITEM_MAP[d.itemId]?.name ?? d.itemId}(${Math.round(d.rate * 100)}%)`)
+        .join(" / ");
+
+      return `<div class="book-monster-card ${isBoss ? "boss-card" : ""}">
+        <img class="book-monster-img" src="${enemyDef.img}">
+        <div class="book-monster-info">
+          <div class="book-monster-head">
+            <span class="book-monster-name ${isBoss ? "boss" : ""}">${isBoss ? "★ " + enemyDef.name : enemyDef.name}</span>
+            <span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>
+            <span class="kill-count">×${kills} ${nextHint}</span>
+          </div>
+          ${killTiers ? `<div class="book-kill-tiers">${killTiers}</div>` : ""}
+          <div class="book-drop-info">DROP: ${drops}</div>
+        </div>
       </div>`;
     }).join("");
 
+    const mapBonusHtml = def.mapBonus
+      ? `<div class="book-map-bonus ${allMax ? "cleared" : "locked"}">
+          <span>★ マップ制覇 (全員×999)</span>
+          <span class="map-bonus-stats">${statStr(def.mapBonus)}</span>
+          ${allMax ? "<span>✓</span>" : ""}
+        </div>`
+      : "";
+
     return `<div class="book-map-section">
-      <div class="book-map-name">${mi + 1}. ${map.name}</div>
-      ${rows}
+      <div class="book-map-name ${!mapReached ? "unseen-map" : ""}">${mapName}</div>
+      <div class="book-monster-cards">${cards}</div>
+      ${mapBonusHtml}
     </div>`;
   }).join("");
 
-  document.getElementById("monster-book-content").innerHTML = sections;
+  document.getElementById("book-content").innerHTML = sections;
 }
 
 // --- 初期化 ---
@@ -714,23 +750,10 @@ function init() {
   updateInventoryDisplay();
   updateShopDisplay();
 
-  if (loaded && state.cleared) {
-    gameClear();
-  } else if (loaded) {
-    const enemy = MAPS[state.mapIndex].stages[state.stageInMap];
-    elEnemyName.textContent = enemy.name;
-    elEnemyImg.src = enemy.img;
-    elEnemyAtkDisplay.textContent = `ATK ${enemy.atk}  ${(1000 / enemy.atkInterval).toFixed(1)}/s`;
-    updateStageDisplay();
-    updateHpDisplay();
-    startEnemyAttack(enemy);
-    addSystemLog("セーブデータをロードしました");
-  } else {
-    spawnEnemy();
-  }
+  if (loaded && state.cleared) gameClear();
+  else                         spawnEnemy();
 
-  // 攻撃インターバルはupdateStatsDisplay内のresetAttackIntervalで開始される
-  setInterval(autoSave, 5000); // 5秒ごとに自動セーブ
+  setInterval(autoSave, 5000);
 }
 
 init();
