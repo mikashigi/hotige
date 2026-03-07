@@ -100,21 +100,28 @@ function isMultiMode(mapIndex) {
 
 // --- ゲーム状態 ---
 const state = {
-  mapIndex:     0,
-  stageInMap:   0,
-  attack:       1,
-  gold:         0,
-  enemyHp:      0,
-  enemyMaxHp:   0,
-  playerHp:     50,
-  playerMaxHp:  50,
-  inventory:    {},
-  cleared:      false,
-  shopLevels:   { vit: 0, agi: 0, dex: 0, luk: 0 },
-  currentEnemy: null,
-  monsterKills: {},
-  multiEnemies: null, // 一括討伐モード中の敵リスト（{ ...enemy, currentHp }[]）
-  refine: null,       // 精製中: { recipeId, elapsed: ms, duration: ms, countLeft: number|-1 }
+  mapIndex:        0,
+  stageInMap:      0,
+  attack:          1,
+  gold:            0,
+  enemyHp:         0,
+  enemyMaxHp:      0,
+  playerHp:        50,
+  playerMaxHp:     50,
+  inventory:       {},
+  cleared:         false,
+  shopLevels:      { vit: 0, str: 0, int: 0, agi: 0, dex: 0, luk: 0 },
+  currentEnemy:    null,
+  monsterKills:    {},
+  multiEnemies:    null, // 一括討伐モード中の敵リスト（{ ...enemy, currentHp }[]）
+  refine:          null, // 精製中: { recipeId, elapsed: ms, duration: ms, countLeft: number|-1 }
+  achievements:    [],
+  totalGoldEarned: 0,
+  totalRefines:    0,
+  totalDeaths:     0,
+  totalShopBuys:   0,
+  rareKills:       0,
+  mapsCleared:     0,
 };
 
 // --- 定数 ---
@@ -206,6 +213,8 @@ function enemyTick(enemy) {
     clearInterval(attackIntervalId);
     attackIntervalId = null;
     _lastInterval = -1;
+    state.totalDeaths++;
+    checkAchievements();
     addLog("倒れた…マップ1からやり直し！");
     showDeathOverlay(() => {
       state.playerHp    = state.playerMaxHp;
@@ -236,6 +245,8 @@ function multiEnemyTick() {
     clearInterval(attackIntervalId);
     attackIntervalId = null;
     _lastInterval = -1;
+    state.totalDeaths++;
+    checkAchievements();
     addLog("倒れた…マップ1からやり直し！");
     showDeathOverlay(() => {
       state.playerHp    = state.playerMaxHp;
@@ -434,7 +445,9 @@ function checkMultiComplete() {
   state.stageInMap = 0;
   state.mapIndex++;
   if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
+  state.mapsCleared++;
   addSystemLog(`★ マップ一括クリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
+  checkAchievements();
   showMapClearOverlay(MAP_DEFS[state.mapIndex].name);
 }
 
@@ -632,11 +645,14 @@ function tick() {
     const defeatedEnemy = state.currentEnemy;
     const earned = Math.floor(defeatedEnemy.gold * (0.75 + Math.random() * 0.5));
     state.gold += earned;
+    state.totalGoldEarned += earned;
+    if (defeatedEnemy.isRare) state.rareKills++;
     addLog(`${defeatedEnemy.name} を倒した！ +${earned}G`);
     playDefeatSound();
     updateShopDisplay();
     rollDrops(defeatedEnemy);
     recordKill(state.mapIndex, defeatedEnemy.name);
+    checkAchievements();
 
     if (defeatedEnemy.isFinal && defeatedEnemy.isBoss) { gameClear(); return; }
 
@@ -645,7 +661,9 @@ function tick() {
       state.stageInMap = 0;
       state.mapIndex++;
       if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
+      state.mapsCleared++;
       addSystemLog(`★ マップクリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
+      checkAchievements();
       showMapClearOverlay(MAP_DEFS[state.mapIndex].name);
       return;
     }
@@ -667,8 +685,11 @@ function tickMulti(s) {
   flashEnemyHit();
   const earned = Math.floor(e.gold * (0.75 + Math.random() * 0.5));
   state.gold += earned;
+  state.totalGoldEarned += earned;
+  if (e.isRare) state.rareKills++;
   rollDrops(e);
   recordKill(state.mapIndex, e.name);
+  checkAchievements();
   addLog(`${e.name} 撃破！ +${earned}G`);
   playDefeatSound();
   updateShopDisplay();
@@ -716,6 +737,7 @@ function recordKill(mapIndex, enemyName) {
 // --- ゲームクリア ---
 function gameClear() {
   state.cleared = true;
+  checkAchievements();
   stopEnemyAttack();
   clearInterval(attackIntervalId);
   elMapName.textContent = "★ GAME CLEAR ★";
@@ -759,10 +781,12 @@ function buyShopStat(key, n = 1) {
   const cost = shopStatCostN(key, n);
   if (state.gold < cost) return;
   state.gold -= cost;
-  state.shopLevels[key] += n;
+  state.shopLevels[key] = (state.shopLevels[key] || 0) + n;
+  state.totalShopBuys += n;
   updateShopDisplay();
   invalidateStats();
   updateStatsDisplay();
+  checkAchievements();
   const def   = SHOP_DEFS[key];
   const total = state.shopLevels[key] * def.amount;
   addSystemLog(`${key.toUpperCase()}×${n}強化！ ${def.stat.toUpperCase()}が合計+${total} (次回: ${shopStatCost(key)}G)`);
@@ -841,7 +865,9 @@ function completeOneRefine() {
   const newTier  = getItemTier(newCount);
   addSystemLog(`${recipe.name} 完成！ ${ITEM_MAP[outId]?.name ?? outId} ×${newCount}`);
   if (newTier > prevTier) addSystemLog(`★ ${ITEM_MAP[outId]?.name} Tier${newTier} 解放！`);
+  state.totalRefines++;
   notifyRefineTab('success');
+  checkAchievements();
   invalidateStats();
   updateStatsDisplay();
   updateInventoryDisplay();
@@ -1026,6 +1052,68 @@ function clearRefineBadge() {
 }
 
 function togglePanel(id) {} // 互換スタブ（タブ化により不要）
+
+// --- 実績 ---
+let _toastTimer = null;
+
+function checkAchievements() {
+  let stats = null;
+  try { stats = computePlayerStats(); } catch(e) {}
+  const newUnlocks = [];
+  for (const ach of ACHIEVEMENTS) {
+    if (state.achievements.includes(ach.id)) continue;
+    try {
+      if (ach.check(state, stats)) {
+        state.achievements.push(ach.id);
+        newUnlocks.push(ach);
+      }
+    } catch(e) {}
+  }
+  if (newUnlocks.length > 0) {
+    showAchievementToast(newUnlocks[newUnlocks.length - 1]);
+  }
+}
+
+function showAchievementToast(ach) {
+  const toast = document.getElementById('achievement-toast');
+  document.getElementById('achievement-toast-icon').textContent = ach.icon + ' ';
+  document.getElementById('achievement-toast-name').textContent = ach.name;
+  toast.classList.remove('show');
+  clearTimeout(_toastTimer);
+  setTimeout(() => toast.classList.add('show'), 10);
+  _toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+}
+
+function openAchievements() {
+  const el = document.getElementById('achievement-content');
+  const stats = computePlayerStats();
+  const unlocked = new Set(state.achievements);
+  let count = 0;
+  el.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'achievement-grid';
+  for (const ach of ACHIEVEMENTS) {
+    const isUnlocked = unlocked.has(ach.id);
+    if (isUnlocked) count++;
+    const card = document.createElement('div');
+    card.className = 'achievement-card' + (isUnlocked ? '' : ' locked');
+    card.innerHTML = `
+      <div class="achievement-icon">${ach.icon}</div>
+      <div>
+        <div class="achievement-name">${isUnlocked ? ach.name : '???'}</div>
+        <div class="achievement-desc">${isUnlocked ? ach.desc : '条件を満たすと解除'}</div>
+      </div>`;
+    grid.appendChild(card);
+  }
+  el.appendChild(grid);
+  document.getElementById('achievement-progress').textContent =
+    `${count} / ${ACHIEVEMENTS.length}`;
+  document.getElementById('modal-achievement').classList.add('open');
+}
+
+function closeAchievements() {
+  document.getElementById('modal-achievement').classList.remove('open');
+}
 
 function toggleMute() {
   soundMuted = !soundMuted;
@@ -1267,8 +1355,15 @@ function saveData() {
     inventory:    state.inventory,
     cleared:      state.cleared,
     shopLevels:   state.shopLevels,
-    monsterKills: state.monsterKills,
-    refine:       state.refine,
+    monsterKills:    state.monsterKills,
+    refine:          state.refine,
+    achievements:    state.achievements,
+    totalGoldEarned: state.totalGoldEarned,
+    totalRefines:    state.totalRefines,
+    totalDeaths:     state.totalDeaths,
+    totalShopBuys:   state.totalShopBuys,
+    rareKills:       state.rareKills,
+    mapsCleared:     state.mapsCleared,
     soundVolume,
     soundMuted,
   }));
@@ -1300,8 +1395,18 @@ function loadGame() {
   state.inventory    = data.inventory    || {};
   state.cleared      = data.cleared      || false;
   state.shopLevels   = data.shopLevels   || { vit: 0, agi: 0, dex: 0, luk: 0 };
-  state.monsterKills = data.monsterKills || {};
-  state.refine       = data.refine       || null;
+  state.monsterKills    = data.monsterKills    || {};
+  state.refine          = data.refine          || null;
+  state.achievements    = data.achievements    || [];
+  state.totalGoldEarned = data.totalGoldEarned ?? 0;
+  state.totalRefines    = data.totalRefines    ?? 0;
+  state.totalDeaths     = data.totalDeaths     ?? 0;
+  state.totalShopBuys   = data.totalShopBuys   ?? 0;
+  state.rareKills       = data.rareKills       ?? 0;
+  state.mapsCleared     = data.mapsCleared     ?? 0;
+  // 旧セーブの shopLevels に str/int がない場合の補完
+  state.shopLevels.str  = state.shopLevels.str ?? 0;
+  state.shopLevels.int  = state.shopLevels.int ?? 0;
   if (data.soundVolume != null) soundVolume = data.soundVolume;
   if (data.soundMuted  != null) soundMuted  = data.soundMuted;
   masterGain.gain.value = soundMuted ? 0 : soundVolume;

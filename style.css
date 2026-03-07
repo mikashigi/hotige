@@ -1693,6 +1693,79 @@ html, body {
 }
 
 /* =====================
+   実績
+   ===================== */
+.achievement-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.achievement-card {
+  background: var(--stat-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.achievement-card.locked {
+  opacity: 0.35;
+  filter: grayscale(0.8);
+}
+
+.achievement-icon {
+  font-size: 1.4rem;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.achievement-name {
+  font-size: 0.82rem;
+  font-weight: bold;
+  color: var(--text);
+}
+
+.achievement-desc {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* 実績トースト */
+#achievement-toast {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--panel-bg);
+  border: 2px solid #c8a400;
+  border-radius: 12px;
+  padding: 7px 18px;
+  z-index: 45;
+  display: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  font-size: 0.82rem;
+  gap: 6px;
+  pointer-events: none;
+}
+#achievement-toast.show {
+  display: flex;
+  align-items: center;
+  animation: toastIn 0.3s ease forwards, toastOut 0.35s ease 2.2s forwards;
+}
+@keyframes toastIn {
+  from { transform: translateX(-50%) translateY(12px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+}
+@keyframes toastOut {
+  from { transform: translateX(-50%) translateY(0);    opacity: 1; }
+  to   { transform: translateX(-50%) translateY(12px); opacity: 0; }
+}
+
+/* =====================
    モンスター図鑑
    ===================== */
 .book-map-section {

@@ -35,6 +35,7 @@
     <div id="header">
       <div id="book-btns">
         <button class="book-btn" onclick="openBook('item')">図鑑</button>
+        <button class="book-btn" onclick="openAchievements()">実績</button>
       </div>
       <div id="stage-display">
         <div id="map-name-row">
@@ -231,6 +232,25 @@
     </div>
   </div>
 
+  <!-- 実績トースト -->
+  <div id="achievement-toast">
+    <span id="achievement-toast-icon"></span>
+    <span>実績解除！</span>
+    <strong id="achievement-toast-name"></strong>
+  </div>
+
+  <!-- 実績モーダル -->
+  <div id="modal-achievement" class="modal-overlay" onclick="closeAchievements()">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span>実績</span>
+        <span id="achievement-progress" style="font-size:0.8rem;color:var(--text-muted);font-weight:normal"></span>
+        <button class="modal-close" onclick="closeAchievements()">✕</button>
+      </div>
+      <div class="modal-body" id="achievement-content"></div>
+    </div>
+  </div>
+
   <!-- 図鑑モーダル（統合） -->
   <div id="modal-book" class="modal-overlay" onclick="closeBook()">
     <div class="modal-box" onclick="event.stopPropagation()">
@@ -249,6 +269,7 @@
   <script src="data/maps.js"></script>
   <script src="data/shop.js"></script>
   <script src="data/refine.js"></script>
+  <script src="data/achievements.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
