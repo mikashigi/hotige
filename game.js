@@ -27,6 +27,26 @@ function makeEnemy(mapIndex, stageInMap) {
     atk:         isBoss ? Math.round(baseAtk * bossAtkM * atkMult) : Math.round(baseAtk * atkMult),
     atkInterval: isBoss ? 1500 : 2000,
     gold:        isBoss ? Math.round(baseGold * 5) : baseGold,
+    evasion:     enemyDef.evasion ?? 0,
+  };
+}
+
+// 図鑑用：特定の敵定義から代表ステータスを計算（通常 si=4、ボス si=9）
+function computeEnemyStats(mi, enemyDef, isBoss) {
+  const def    = MAP_DEFS[mi];
+  const mult   = 1 + mi * 0.8;
+  const si     = isBoss ? 9 : 4;
+  const hpMult   = enemyDef.hpMult  ?? 1.0;
+  const atkMult  = enemyDef.atkMult ?? 1.0;
+  const bossHpM  = def.isFinal ? 10 : 6;
+  const bossAtkM = def.isFinal ? 4  : 3;
+  const baseHp   = Math.round(20 * mult * (1 + si * 0.15));
+  const baseAtk  = Math.round(3  * Math.sqrt(mult) * (1 + si * 0.08));
+  return {
+    hp:  isBoss ? Math.round(baseHp  * bossHpM  * hpMult)  : Math.round(baseHp  * hpMult),
+    atk: isBoss ? Math.round(baseAtk * bossAtkM * atkMult) : Math.round(baseAtk * atkMult),
+    spd: isBoss ? (1000 / 1500).toFixed(1) : (1000 / 2000).toFixed(1),
+    evasion: enemyDef.evasion ?? 0,
   };
 }
 
@@ -322,7 +342,8 @@ function spawnEnemy() {
 
   elEnemyName.textContent       = enemy.name;
   elEnemyImg.src                = enemy.img;
-  elEnemyAtkDisplay.textContent = `ATK ${enemy.atk}  ${(1000 / enemy.atkInterval).toFixed(1)}/s`;
+  const evaStr = enemy.evasion > 0 ? `  EVA ${Math.round(enemy.evasion * 100)}%` : "";
+  elEnemyAtkDisplay.textContent = `ATK ${enemy.atk}  ${(1000 / enemy.atkInterval).toFixed(1)}/s${evaStr}`;
   updateStageDisplay();
   updateHpDisplay();
 
@@ -382,10 +403,17 @@ function tick() {
   const s = computePlayerStats();
   if (state.multiEnemies !== null) { tickMulti(s); return; }
 
-  // 通常単体
-  if (Math.random() > s.hitRate) {
-    addLog("ミス！");
-    showDamageNumber("MISS", "miss");
+  // 通常単体：実効命中率 = 命中率 - 敵回避率
+  const rand = Math.random();
+  const effectiveHit = Math.max(0, s.hitRate - state.currentEnemy.evasion);
+  if (rand > effectiveHit) {
+    if (state.currentEnemy.evasion > 0 && rand <= s.hitRate) {
+      addLog(`${state.currentEnemy.name} はかわした！`);
+      showDamageNumber("EVADE", "miss");
+    } else {
+      addLog("ミス！");
+      showDamageNumber("MISS", "miss");
+    }
     return;
   }
 
@@ -433,12 +461,6 @@ function tickMulti(s) {
   const alive = state.multiEnemies.filter(e => e.currentHp > 0);
   if (alive.length === 0) return;
 
-  if (Math.random() > s.hitRate) {
-    addLog("ミス！");
-    showDamageNumber("MISS", "miss");
-    return;
-  }
-
   let dmg = s.totalAtk;
   let dmgType = null;
   let suffix = "";
@@ -448,11 +470,14 @@ function tickMulti(s) {
     suffix  = " ★クリティカル！";
   }
 
-  // 全員に同じダメージ
-  alive.forEach(e => { e.currentHp -= dmg; });
-  showDamageNumber(`${dmg}×${alive.length}`, dmgType);
+  // 敵ごとに実効命中率 = 命中率 - 敵回避率 で判定
+  const hit = alive.filter(e => Math.random() <= Math.max(0, s.hitRate - (e.evasion || 0)));
+  const eva = alive.length - hit.length;
+  hit.forEach(e => { e.currentHp -= dmg; });
+  const hitLabel = hit.length > 0 ? `${dmg}×${hit.length}体` : "全員かわした！";
+  showDamageNumber(hit.length > 0 ? `${dmg}×${hit.length}` : "EVADE", hit.length > 0 ? dmgType : "miss");
   flashEnemyHit();
-  addLog(`全体攻撃！ ${dmg}×${alive.length}体${suffix}`);
+  addLog(`全体攻撃！ ${hitLabel}${eva > 0 ? ` (${eva}体回避)` : ""}${suffix}`);
 
   // 倒れた敵を処理
   const defeated = state.multiEnemies.filter(e => e.currentHp <= 0 && !e._counted);
@@ -1011,11 +1036,11 @@ function renderMonsterBook() {
     const multiUnlocked = bossKills >= 100;
 
     const mapNameText = mapReached ? `${mi + 1}. ${def.name}` : `${mi + 1}. ???`;
-    const multiTag = mapReached && multiUnlocked
-      ? `<span class="multi-badge">一括×${bossKills}</span>`
-      : mapReached && bossKills > 0
-        ? `<span class="multi-badge locked-multi">一括まで${100 - bossKills}回</span>`
-        : "";
+    const multiTag = !mapReached
+      ? ""
+      : multiUnlocked
+        ? `<span class="multi-badge">一括×${bossKills}</span>`
+        : `<span class="multi-badge locked-multi">一括まで${100 - bossKills}回</span>`;
 
     const allDefs = [...def.enemies, def.boss];
     const allMax  = mapReached && allDefs.every(e =>
@@ -1050,12 +1075,18 @@ function renderMonsterBook() {
         .map(d => `${ITEM_MAP[d.itemId]?.name ?? d.itemId}`)
         .join("<br>");
 
+      const st = computeEnemyStats(mi, enemyDef, isBoss);
+      const evaRow = st.evasion > 0 ? `<span class="bmc-stat-eva">EVA ${Math.round(st.evasion * 100)}%</span>` : "";
+
       return `<div class="book-monster-card ${isBoss ? "boss-card" : ""}">
         <div class="bmc-top">
           <img class="book-monster-img" src="${enemyDef.img}">
           <span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>
         </div>
         <div class="book-monster-name ${isBoss ? "boss" : ""}">${isBoss ? "★ " + enemyDef.name : enemyDef.name}</div>
+        <div class="bmc-stats">
+          <span>HP ${st.hp}</span><span>ATK ${st.atk}</span>${evaRow}
+        </div>
         <div class="kill-count">×${kills} ${nextHint}</div>
         ${killTiers ? `<div class="bmc-tiers">${killTiers}</div>` : ""}
         <div class="book-drop-info">${drops}</div>

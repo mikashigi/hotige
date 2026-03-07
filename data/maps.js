@@ -13,6 +13,7 @@
 //   drops       : ドロップテーブル [{ itemId, rate }]
 //   hpMult      : HP倍率（省略時 1.0）
 //   atkMult     : ATK倍率（省略時 1.0）
+//   evasion     : 回避率 0.0〜1.0（省略時 0）例: 0.20 = 20%
 //   killBonus   : 討伐数ボーナス [100体, 500体, 999体] 各ステータスオブジェクト
 
 const MAP_DEFS = [
@@ -27,6 +28,7 @@ const MAP_DEFS = [
         drops: [{ itemId: "slime_gel", rate: 0.60 }],
         killBonus: [{ vit:1, agi:1 }, { vit:2, agi:2 }, { vit:3, agi:3, luk:1 }] },
       { name: "野うさぎ",  img: "img/enemy/enemy_slime.png",
+        evasion: 0.10,
         drops: [{ itemId: "slime_gel", rate: 0.40 }],
         killBonus: [{ agi:1, dex:1 }, { agi:2, dex:2 }, { agi:4, dex:3 }] },
       { name: "ゴブリン",  img: "img/enemy/enemy_goblin.png",
@@ -71,6 +73,7 @@ const MAP_DEFS = [
     mapBonus: { str:10, vit:8, dex:5, agi:3 },
     enemies: [
       { name: "コウモリ",         img: "img/enemy/enemy_goblin.png",
+        evasion: 0.20,
         drops: [{ itemId: "goblin_fang", rate: 0.50 }],
         killBonus: [{ agi:2, dex:1 }, { agi:4, dex:2 }, { agi:7, dex:4 }] },
       { name: "ゴブリン長",       img: "img/enemy/enemy_goblin.png",
@@ -96,6 +99,7 @@ const MAP_DEFS = [
         drops: [{ itemId: "orc_hide", rate: 0.50 }],
         killBonus: [{ vit:2, str:1 }, { vit:4, str:2 }, { vit:8, str:4 }] },
       { name: "スコーピオン", img: "img/enemy/enemy_orc.png",
+        evasion: 0.12,
         drops: [{ itemId: "orc_hide", rate: 0.45 }, { itemId: "goblin_fang", rate: 0.20 }],
         killBonus: [{ dex:2, agi:1 }, { dex:4, agi:3 }, { dex:7, agi:5 }] },
       { name: "ミイラ兵",     img: "img/enemy/enemy_troll.png",
@@ -115,6 +119,7 @@ const MAP_DEFS = [
     mapBonus: { str:12, vit:10, int:8, agi:5 },
     enemies: [
       { name: "雪うさぎ", img: "img/enemy/enemy_orc.png",
+        evasion: 0.15,
         drops: [{ itemId: "orc_hide", rate: 0.45 }],
         killBonus: [{ agi:2, luk:1 }, { agi:4, luk:3 }, { agi:7, luk:5, dex:2 }] },
       { name: "アイス魔", img: "img/enemy/enemy_orc.png",
@@ -140,6 +145,7 @@ const MAP_DEFS = [
         drops: [{ itemId: "troll_blood", rate: 0.50 }],
         killBonus: [{ str:2, vit:2 }, { str:5, vit:4 }, { str:9, vit:8 }] },
       { name: "炎の精霊",       img: "img/enemy/enemy_troll.png",
+        evasion: 0.15,
         drops: [{ itemId: "troll_blood", rate: 0.45 }, { itemId: "orc_hide", rate: 0.20 }],
         killBonus: [{ str:2, int:2 }, { str:5, int:5 }, { str:9, int:9, luk:2 }] },
       { name: "マグマゴーレム", img: "img/enemy/enemy_dragon.png",
@@ -162,6 +168,7 @@ const MAP_DEFS = [
         drops: [{ itemId: "troll_blood", rate: 0.45 }],
         killBonus: [{ str:3, dex:2 }, { str:6, dex:4 }, { str:11, dex:7, agi:3 }] },
       { name: "深海魚",   img: "img/enemy/enemy_troll.png",
+        evasion: 0.18,
         drops: [{ itemId: "dragon_scale", rate: 0.25 }],
         killBonus: [{ agi:2, dex:2 }, { agi:5, dex:4 }, { agi:9, dex:7, luk:2 }] },
       { name: "クラーケン", img: "img/enemy/enemy_dragon.png",
@@ -184,6 +191,7 @@ const MAP_DEFS = [
         drops: [{ itemId: "dragon_scale", rate: 0.50 }],
         killBonus: [{ str:4, dex:2 }, { str:8, dex:5 }, { str:14, dex:9, vit:3 }] },
       { name: "嵐の精霊", img: "img/enemy/enemy_dragon.png",
+        evasion: 0.22,
         drops: [{ itemId: "troll_blood", rate: 0.40 }],
         killBonus: [{ agi:3, int:2 }, { agi:6, int:5 }, { agi:10, int:9, luk:3 }] },
       { name: "古代竜",   img: "img/enemy/enemy_dragon.png",
@@ -191,6 +199,7 @@ const MAP_DEFS = [
         killBonus: [{ str:4, int:3, vit:2 }, { str:8, int:6, vit:5 }, { str:14, int:10, vit:9, dex:3 }] },
     ],
     boss: { name: "天空の番人", img: "img/enemy/enemy_dragon.png",
+      evasion: 0.15,
       drops: [{ itemId: "dragon_scale", rate: 0.9 }, { itemId: "troll_blood", rate: 0.9 }],
       killBonus: [{ str:8, vit:6, int:5, agi:3 }, { str:16, vit:12, int:10, dex:4, agi:5 }, { str:28, vit:20, int:17, dex:8, agi:9, luk:4 }] },
   },
@@ -206,6 +215,7 @@ const MAP_DEFS = [
         drops: [{ itemId: "dragon_scale", rate: 0.50 }],
         killBonus: [{ str:5, int:3 }, { str:10, int:7 }, { str:17, int:12, vit:4 }] },
       { name: "堕天使",     img: "img/enemy/enemy_dragon.png",
+        evasion: 0.25,
         drops: [{ itemId: "lucky_coin", rate: 0.35 }],
         killBonus: [{ int:4, luk:2 }, { int:8, luk:5 }, { int:14, luk:9, dex:3 }] },
       { name: "魔王の将",   img: "img/enemy/enemy_dragon.png",
@@ -236,6 +246,7 @@ const MAP_DEFS = [
         killBonus: [{ str:6, int:5 }, { str:13, int:10, luk:3 }, { str:22, int:17, luk:7, vit:5 }] },
     ],
     boss: { name: "魔王", img: "img/enemy/enemy_dragon.png",
+      evasion: 0.20,
       drops: [{ itemId: "dragon_scale", rate: 0.9 }, { itemId: "lucky_coin", rate: 0.9 }],
       killBonus: [{ str:15, vit:12, int:10, dex:6, agi:5, luk:6 }, { str:28, vit:22, int:20, dex:12, agi:10, luk:12 }, { str:50, vit:38, int:35, dex:20, agi:18, luk:22 }] },
   },
