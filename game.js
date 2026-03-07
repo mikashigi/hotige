@@ -302,13 +302,24 @@ function updateStageDisplay() {
 // --- 一括討伐モード開始 ---
 function spawnMultiEnemies() {
   state.multiEnemies = [];
+  const def = MAP_DEFS[state.mapIndex];
+  let rareSpawned = false;
   for (let si = 0; si < 10; si++) {
-    const e = makeEnemy(state.mapIndex, si);
+    let e;
+    if (si < 9 && !rareSpawned && def.rare && Math.random() < (def.rare.rate ?? 0.04)) {
+      e = makeRareEnemy(state.mapIndex, si);
+      rareSpawned = true;
+    } else {
+      e = makeEnemy(state.mapIndex, si);
+    }
     state.multiEnemies.push({ ...e, currentHp: e.hp });
   }
 
+  state.multiCurrentIdx = 0;
+  _lastInterval = -1; // 攻撃速度を3倍に切り替えるため強制リセット
   elEnemyArea.classList.add("multi-mode");
   renderMultiGrid();
+  updateMultiStats();
   updateStageDisplay();
 
   // 一括モードの敵攻撃インターバル（2000ms ごとに全員で攻撃）
@@ -319,29 +330,90 @@ function spawnMultiEnemies() {
   addSystemLog(`${MAP_DEFS[state.mapIndex].name}: ボス100回討伐達成！`);
 }
 
-function renderMultiGrid() {
-  elMultiGrid.innerHTML = (state.multiEnemies || []).map((e, i) => `
-    <div class="multi-enemy-card" id="multi-card-${i}">
-      <img src="${e.img}" class="multi-enemy-img">
-      <div class="multi-enemy-info">
-        <div class="multi-enemy-name">${e.name}</div>
-        <div class="mini-hp-bar-wrap">
-          <div class="mini-hp-bar" id="mini-hp-${i}"></div>
-        </div>
-      </div>
-    </div>
-  `).join("");
+function updateMultiStats() {
+  if (!state.multiEnemies) return;
+  const idx = state.multiCurrentIdx ?? 0;
+  const e   = state.multiEnemies[idx];
+  if (!e) return;
+  const remaining = state.multiEnemies.filter(en => en.currentHp > 0).length;
+  const isBoss    = idx === 9;
+  elEnemyName.textContent       = `${e.name}（残り ${remaining}体）`;
+  elHpBar.style.width           = Math.max(0, e.currentHp / e.hp * 100) + "%";
+  elEnemyHp.textContent         = Math.max(0, e.currentHp);
+  elEnemyMaxHp.textContent      = e.hp;
+  elEnemyAtkDisplay.textContent = `ATK ${e.atk}  0.5/s`;
+  const label = document.getElementById("multi-progress-label");
+  if (label) label.textContent = `${idx + 1} / ${state.multiEnemies.length}`;
+  const card = document.getElementById(`multi-card-${idx}`);
+  if (card) card.classList.toggle("boss-last", isBoss && remaining === 1);
 }
 
+const MULTI_CARD_W = 110;
+const MULTI_CARD_GAP = 6;
+
+function renderMultiGrid() {
+  const enemies = state.multiEnemies || [];
+  const idx = state.multiCurrentIdx ?? 0;
+  const total = enemies.length;
+  elMultiGrid.innerHTML =
+    `<div class="enemy-sweep-row" id="multi-sweep-row">${enemies.map((e, i) => {
+      const isBoss = i === 9;
+      const isCurrent = i === idx;
+      return `<div class="multi-enemy-card${isBoss?" boss-card":""}${isCurrent?" current":""}" id="multi-card-${i}">
+        <img src="${e.img}" class="multi-enemy-img">
+        <div class="mini-hp-bar-wrap" style="width:100%"><div class="mini-hp-bar" id="mini-hp-${i}"></div></div>
+      </div>`;
+    }).join("")}</div>
+    <div class="multi-progress" id="multi-progress-label">${idx + 1} / ${total}</div>`;
+  requestAnimationFrame(() => centerCurrentCard(false));
+}
+
+function centerCurrentCard(animate) {
+  const card = document.getElementById(`multi-card-${state.multiCurrentIdx ?? 0}`);
+  if (!card) return;
+  card.scrollIntoView({ behavior: animate ? "smooth" : "instant", inline: "center", block: "nearest" });
+}
+
+// 死亡後に次の敵へ進む
+function advanceToNext(mapSnap) {
+  if (!state.multiEnemies || state.mapIndex !== mapSnap) return;
+  state.multiCurrentIdx++;
+  if (state.multiCurrentIdx >= state.multiEnemies.length) {
+    checkMultiComplete();
+    return;
+  }
+  centerCurrentCard(true);
+  const nextCard = document.getElementById(`multi-card-${state.multiCurrentIdx}`);
+  if (nextCard) nextCard.classList.add("current");
+  updateMultiGrid();
+  updateMultiStats();
+}
+
+
 function updateMultiGrid() {
-  (state.multiEnemies || []).forEach((e, i) => {
-    const card = document.getElementById(`multi-card-${i}`);
-    const bar  = document.getElementById(`mini-hp-${i}`);
-    if (!card || !bar) return;
-    const pct = Math.max(0, e.currentHp / e.hp * 100);
-    bar.style.width = pct + "%";
-    if (e.currentHp <= 0) card.classList.add("dead");
-  });
+  if (!state.multiEnemies) return;
+  const idx = state.multiCurrentIdx ?? 0;
+  const e   = state.multiEnemies[idx];
+  const bar = document.getElementById(`mini-hp-${idx}`);
+  if (e && bar) bar.style.width = Math.max(0, e.currentHp / e.hp * 100) + "%";
+  updateMultiStats();
+}
+
+function checkMultiComplete() {
+  if (!state.multiEnemies) return;
+  if (state.multiEnemies.some(e => e.currentHp > 0)) return;
+  stopEnemyAttack();
+  const hadFinal = state.multiEnemies.some(e => e.isFinal);
+  state.multiEnemies = null;
+  _lastInterval = -1; // 通常速度に戻すため強制リセット
+  elEnemyArea.classList.remove("multi-mode");
+  elMultiGrid.innerHTML = "";
+  if (hadFinal) { gameClear(); return; }
+  state.stageInMap = 0;
+  state.mapIndex++;
+  if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
+  addSystemLog(`★ マップ一括クリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
+  spawnEnemy();
 }
 
 // --- 通常の敵をセット ---
@@ -489,64 +561,28 @@ function tick() {
 
 // --- 一括討伐モードのプレイヤー攻撃（全員同時ダメージ）---
 function tickMulti(s) {
-  const alive = state.multiEnemies.filter(e => e.currentHp > 0);
-  if (alive.length === 0) return;
+  if (!state.multiEnemies) return;
+  const idx = state.multiCurrentIdx ?? 0;
+  const e   = state.multiEnemies[idx];
+  if (!e || e.currentHp <= 0) return;
 
-  let dmg = s.totalAtk;
-  let dmgType = null;
-  let suffix = "";
-  // 一括モードは全員平均のcritRes で判定（alive の平均）
-  const avgCritRes = alive.reduce((a, e) => a + (e.critRes || 0), 0) / alive.length;
-  const effectiveCritM = Math.max(0, s.critChance - avgCritRes);
-  if (Math.random() < effectiveCritM) {
-    dmg     = Math.floor(dmg * 1.5);
-    dmgType = "crit";
-    suffix  = " ★クリティカル！";
-  }
-
-  // 敵ごとに実効命中率 = 命中率 - 敵回避率 で判定
-  const hit = alive.filter(e => Math.random() <= Math.max(0, s.hitRate - (e.evasion || 0)));
-  const eva = alive.length - hit.length;
-  hit.forEach(e => { e.currentHp -= dmg; });
-  const hitLabel = hit.length > 0 ? `${dmg}×${hit.length}体` : "全員かわした！";
-  showDamageNumber(hit.length > 0 ? `${dmg}×${hit.length}` : "EVADE", hit.length > 0 ? dmgType : "miss");
+  // 一括討伐：必中・一撃必殺
+  e.currentHp = 0;
+  e._counted = true;
+  showDamageNumber("KILL", "crit");
   flashEnemyHit();
-  addLog(`全体攻撃！ ${hitLabel}${eva > 0 ? ` (${eva}体回避)` : ""}${suffix}`);
+  const earned = Math.floor(e.gold * (0.75 + Math.random() * 0.5));
+  state.gold += earned;
+  rollDrops(e);
+  recordKill(state.mapIndex, e.name);
+  addLog(`${e.name} 撃破！ +${earned}G`);
+  playDefeatSound();
+  updateShopDisplay();
 
-  // 倒れた敵を処理
-  const defeated = state.multiEnemies.filter(e => e.currentHp <= 0 && !e._counted);
-  if (defeated.length > 0) {
-    let totalGold = 0;
-    for (const e of defeated) {
-      e._counted = true;
-      const earned = Math.floor(e.gold * (0.75 + Math.random() * 0.5));
-      totalGold += earned;
-      rollDrops(e);
-      recordKill(state.mapIndex, e.name);
-    }
-    state.gold += totalGold;
-    addLog(`${defeated.map(e => e.name).join("、")} 撃破！ +${totalGold}G`);
-    playDefeatSound();
-    updateShopDisplay();
-  }
-
-  updateMultiGrid();
-
-  // 全員撃破（ボス込み）→ 次のマップへ
-  const anyAlive = state.multiEnemies.some(e => e.currentHp > 0);
-  if (!anyAlive) {
-    stopEnemyAttack();
-    const hadFinal = state.multiEnemies.some(e => e.isFinal);
-    state.multiEnemies = null;
-    elEnemyArea.classList.remove("multi-mode");
-    elMultiGrid.innerHTML = "";
-    if (hadFinal) { gameClear(); return; }
-    state.stageInMap = 0;
-    state.mapIndex++;
-    if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
-    addSystemLog(`★ マップ一括クリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
-    spawnEnemy();
-  }
+  const deadCard = document.getElementById(`multi-card-${idx}`);
+  if (deadCard) { deadCard.classList.add("dead"); deadCard.classList.remove("current"); }
+  const mapSnap = state.mapIndex;
+  setTimeout(() => advanceToNext(mapSnap), 180);
 }
 
 // --- モンスター討伐記録 ---
@@ -639,6 +675,14 @@ function buyShopStat(key, n = 1) {
 // --- 音 ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let soundMuted = false;
+
+// ブラウザの自動再生ポリシー対策：ユーザー操作時に AudioContext を再開
+function resumeAudioCtx() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+document.addEventListener('click',     resumeAudioCtx);
+document.addEventListener('keydown',   resumeAudioCtx);
+document.addEventListener('touchstart', resumeAudioCtx);
 const elMuteBtn = document.getElementById("mute-btn");
 
 const SVG_SOUND_ON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -741,10 +785,13 @@ let attackIntervalId = null;
 let _lastInterval = -1;
 
 function resetAttackInterval(s) {
-  if (s.attackInterval === _lastInterval && attackIntervalId !== null) return;
-  _lastInterval = s.attackInterval;
+  const interval = state.multiEnemies
+    ? Math.max(100, Math.floor(s.attackInterval / 3))
+    : s.attackInterval;
+  if (interval === _lastInterval && attackIntervalId !== null) return;
+  _lastInterval = interval;
   clearInterval(attackIntervalId);
-  attackIntervalId = setInterval(tick, s.attackInterval);
+  attackIntervalId = setInterval(tick, interval);
 }
 
 function updateStatsDisplay() {
@@ -858,7 +905,7 @@ function rollDrops(enemy) {
 }
 
 function playDefeatSound() {
-  if (soundMuted) return;
+  if (soundMuted || audioCtx.state !== 'running') return;
   // ペンタトニックスケール（何を組み合わせても不協和にならない）
   const PENTA = [261.63, 293.66, 329.63, 392.00, 440.00,
                  523.25, 587.33, 659.25, 783.99, 880.00,
@@ -1070,21 +1117,25 @@ function renderMonsterBook() {
   const TIER_LABELS = ["T0", "T1", "T2", "T3"];
 
   const sections = MAP_DEFS.map((def, mi) => {
-    const mapReached = mi <= state.mapIndex;
     const bossKey    = `${mi}:${def.boss.name}`;
     const bossKills  = state.monsterKills[bossKey] || 0;
     const multiUnlocked = bossKills >= 100;
 
-    const mapNameText = mapReached ? `${mi + 1}. ${def.name}` : `${mi + 1}. ???`;
-    const multiTag = !mapReached
+    // 討伐記録があれば到達済みとみなす（死亡リセット後も維持）
+    const allDefs    = [...def.enemies, def.boss]; // マップ制覇チェック（レア除外）
+    const displayDefs = [...allDefs, ...(def.rare ? [{ ...def.rare, _isRare: true }] : [])];
+    const mapEverVisited = mi === 0 || displayDefs.some(e =>
+      (state.monsterKills[`${mi}:${e.name}`] || 0) > 0
+    );
+
+    const mapNameText = mapEverVisited ? `${mi + 1}. ${def.name}` : `${mi + 1}. ???`;
+    const multiTag = !mapEverVisited
       ? ""
       : multiUnlocked
         ? `<span class="multi-badge">一括×${bossKills}</span>`
         : `<span class="multi-badge locked-multi">一括まで${100 - bossKills}回</span>`;
 
-    const allDefs    = [...def.enemies, def.boss]; // マップ制覇チェック（レア除外）
-    const displayDefs = [...allDefs, ...(def.rare ? [{ ...def.rare, _isRare: true }] : [])];
-    const allMax  = mapReached && allDefs.every(e =>
+    const allMax  = allDefs.every(e =>
       (state.monsterKills[`${mi}:${e.name}`] || 0) >= 999
     );
 
@@ -1148,7 +1199,7 @@ function renderMonsterBook() {
       : "";
 
     return `<div class="book-map-section">
-      <div class="book-map-name ${!mapReached ? "unseen-map" : ""}">${mapNameText} ${multiTag}</div>
+      <div class="book-map-name ${!mapEverVisited ? "unseen-map" : ""}">${mapNameText} ${multiTag}</div>
       <div class="book-monster-cards">${cards}</div>
       ${mapBonusHtml}
     </div>`;
