@@ -32,7 +32,7 @@
       <!-- 左カラム：敵 + バトルログ + システムログ -->
       <div id="left-col">
         <div id="enemy-area">
-          <img id="enemy-img" src="enemy_slime.png" alt="敵">
+          <img id="enemy-img" src="img/enemy/enemy_slime.png" alt="敵">
           <div id="multi-enemy-grid"></div>
           <div id="enemy-name">スライム</div>
           <div id="hp-bar-wrap"><div id="hp-bar"></div></div>
@@ -53,9 +53,13 @@
 
       <!-- 右カラム：ステータス + インベントリ + システム + ボタン -->
       <div id="right-col">
-        <div class="panel" id="player-panel">
-          <div class="panel-label">ステータス</div>
-          <div id="player-stats">
+        <div class="panel open" id="player-panel">
+          <div class="panel-label" onclick="togglePanel('player-panel')">
+            <span class="panel-icon" id="pi-player"></span>
+            <span class="panel-title">ステータス</span>
+            <span class="panel-arrow">▼</span>
+          </div>
+          <div class="panel-body" id="player-stats">
             <div class="stat-row">
               <div class="stat-box"><span class="stat-label">ATK</span><span id="stat-atk">1</span></div>
               <div class="stat-box"><span class="stat-label">STR</span><span id="stat-str">0</span></div>
@@ -77,16 +81,22 @@
             </div>
           </div>
         </div>
-        <div class="panel" id="inventory-panel">
-          <div class="panel-label">所持アイテム</div>
-          <div id="inventory-list"><span class="empty-msg">まだアイテムがありません</span></div>
-        </div>
-        <div class="panel" id="shop-panel">
-          <div class="panel-label shop-label">
-            <span>ショップ</span>
-            <span id="gold-display">G <span id="gold">0</span></span>
+        <div class="panel open" id="inventory-panel">
+          <div class="panel-label" onclick="togglePanel('inventory-panel')">
+            <span class="panel-icon" id="pi-inventory"></span>
+            <span class="panel-title">所持アイテム</span>
+            <span class="panel-arrow">▼</span>
           </div>
-          <div id="shop-content">
+          <div class="panel-body" id="inventory-list"><span class="empty-msg">まだアイテムがありません</span></div>
+        </div>
+        <div class="panel open" id="shop-panel">
+          <div class="panel-label shop-label" onclick="togglePanel('shop-panel')">
+            <span class="panel-icon" id="pi-shop"></span>
+            <span class="panel-title">ショップ</span>
+            <span id="gold-display">G <span id="gold">0</span></span>
+            <span class="panel-arrow">▼</span>
+          </div>
+          <div class="panel-body" id="shop-content">
             <div class="shop-row">
               <div class="shop-info">
                 <span class="shop-name">HP全回復</span>
@@ -136,16 +146,11 @@
             </div>
           </div>
         </div>
-        <div id="save-buttons">
-          <button onclick="saveGame()">セーブ</button>
-          <button onclick="openExportModal()">エクスポート</button>
-          <button onclick="openImportModal()">インポート</button>
-          <button class="reset-btn" onclick="resetSave()">リセット</button>
-        </div>
       </div>
 
     </div>
   </div>
+  <div id="save-buttons"><!-- JS で生成 --></div>
   <!-- セーブデータ エクスポート/インポートモーダル -->
   <div id="modal-savedata" class="modal-overlay" onclick="closeSaveDataModal()">
     <div class="modal-box savedata-modal-box" onclick="event.stopPropagation()">

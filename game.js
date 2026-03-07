@@ -73,7 +73,22 @@ const state = {
 };
 
 // --- 定数 ---
-const CHAR_ICON = ""; // 例: "img/char.png"
+const CHAR_ICON = ""; // 例: "img/icon/char.png"
+
+// セーブアイコン: src に画像パスを設定すると画像表示、空なら alt のテキストを表示
+const SAVE_ICONS = [
+  { id: "save",   src: "", alt: "S", label: "セーブ",       action: "saveGame()" },
+  { id: "export", src: "", alt: "E", label: "エクスポート", action: "openExportModal()" },
+  { id: "import", src: "", alt: "I", label: "インポート",   action: "openImportModal()" },
+  { id: "reset",  src: "", alt: "R", label: "リセット",     action: "resetSave()",        cls: "reset" },
+];
+
+// パネルアイコン: src に画像パスを設定すると画像表示、空なら alt のテキストを表示
+const PANEL_ICONS = {
+  "pi-player":    { src: "", alt: "能" }, // 例: "img/icon/status.png"
+  "pi-inventory": { src: "", alt: "荷" }, // 例: "img/icon/bag.png"
+  "pi-shop":      { src: "", alt: "店" }, // 例: "img/icon/shop.png"
+};
 
 // --- DOM 参照 ---
 const elMapName    = document.getElementById("map-name");
@@ -579,6 +594,32 @@ function updateMuteBtn() {
   elMuteBtn.classList.toggle("muted", soundMuted);
 }
 
+function initSaveIcons() {
+  const container = document.getElementById("save-buttons");
+  container.innerHTML = SAVE_ICONS.map(icon => {
+    const inner = icon.src
+      ? `<img src="${icon.src}" alt="${icon.alt}" class="save-icon-img">`
+      : `<span class="save-icon-text">${icon.alt}</span>`;
+    return `<button class="save-icon-btn ${icon.cls || ''}" onclick="${icon.action}" title="${icon.label}">${inner}</button>`;
+  }).join("");
+}
+
+function initPanelIcons() {
+  for (const [elId, icon] of Object.entries(PANEL_ICONS)) {
+    const el = document.getElementById(elId);
+    if (!el) continue;
+    if (icon.src) {
+      el.innerHTML = `<img src="${icon.src}" alt="${icon.alt}" class="panel-icon-img">`;
+    } else {
+      el.textContent = icon.alt;
+    }
+  }
+}
+
+function togglePanel(id) {
+  document.getElementById(id).classList.toggle("open");
+}
+
 function toggleMute() {
   soundMuted = !soundMuted;
   updateMuteBtn();
@@ -1042,6 +1083,8 @@ function renderMonsterBook() {
 // --- 初期化 ---
 function init() {
   updateMuteBtn();
+  initSaveIcons();
+  initPanelIcons();
   initStageGrid();
   const loaded = loadGame();
 
