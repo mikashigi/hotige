@@ -866,7 +866,6 @@ function completeOneRefine() {
   addSystemLog(`${recipe.name} 完成！ ${ITEM_MAP[outId]?.name ?? outId} ×${newCount}`);
   if (newTier > prevTier) addSystemLog(`★ ${ITEM_MAP[outId]?.name} Tier${newTier} 解放！`);
   state.totalRefines++;
-  notifyRefineTab('success');
   checkAchievements();
   invalidateStats();
   updateStatsDisplay();
@@ -888,6 +887,7 @@ function completeOneRefine() {
       notifyRefineTab('warn');
     } else {
       addSystemLog(`${recipe.name} の精製がすべて完了しました`);
+      notifyRefineTab('success');
     }
     clearInterval(refineIntervalId);
     refineIntervalId = null;
@@ -1168,9 +1168,9 @@ function computePlayerStats() {
     ...raw,
     totalAtk:       state.attack + Math.floor(raw.str * 0.8) + Math.floor(raw.int * 0.5),
     playerMaxHp:    50 + raw.vit * 5,
-    hitRate:        Math.min(0.99, 0.90 + raw.dex * 0.003 + raw.int * 0.001),
+    hitRate:        0.90 + raw.dex * 0.003 + raw.int * 0.001,
     attackInterval: Math.max(300, 1000 - raw.agi * 8),
-    critChance:     Math.min(0.50, raw.luk * 0.02 + raw.int * 0.005),
+    critChance:     raw.luk * 0.02 + raw.int * 0.005,
   };
   return _cachedStats;
 }
