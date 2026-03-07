@@ -27,12 +27,38 @@ function makeEnemy(mapIndex, stageInMap) {
     atk:         isBoss ? Math.round(baseAtk * bossAtkM * atkMult) : Math.round(baseAtk * atkMult),
     atkInterval: isBoss ? 1500 : 2000,
     gold:        isBoss ? Math.round(baseGold * 5) : baseGold,
-    evasion:     enemyDef.evasion ?? 0,
+    evasion:     enemyDef.evasion  ?? 0,
+    critRes:     enemyDef.critRes  ?? 0,
+    isRare:      false,
+  };
+}
+
+function makeRareEnemy(mapIndex, stageInMap) {
+  const def  = MAP_DEFS[mapIndex];
+  const rare = def.rare;
+  const mult = 1 + mapIndex * 0.8;
+  const si   = stageInMap;
+  const baseHp   = Math.round(20 * mult * (1 + si * 0.15));
+  const baseAtk  = Math.round(3  * Math.sqrt(mult) * (1 + si * 0.08));
+  const baseGold = Math.round(5  * mult * (1 + si * 0.1));
+  return {
+    name:        rare.name,
+    img:         rare.img,
+    drops:       rare.drops ?? [],
+    isBoss:      false,
+    isRare:      true,
+    isFinal:     false,
+    hp:          Math.round(baseHp  * (rare.hpMult  ?? 1.0)),
+    atk:         Math.round(baseAtk * (rare.atkMult ?? 1.0)),
+    atkInterval: 2000,
+    gold:        Math.round(baseGold * (rare.goldMult ?? 8)),
+    evasion:     rare.evasion  ?? 0,
+    critRes:     rare.critRes  ?? 0,
   };
 }
 
 // 図鑑用：特定の敵定義から代表ステータスを計算（通常 si=4、ボス si=9）
-function computeEnemyStats(mi, enemyDef, isBoss) {
+function computeEnemyStats(mi, enemyDef, isBoss, isRare = false) {
   const def    = MAP_DEFS[mi];
   const mult   = 1 + mi * 0.8;
   const si     = isBoss ? 9 : 4;
@@ -43,10 +69,8 @@ function computeEnemyStats(mi, enemyDef, isBoss) {
   const baseHp   = Math.round(20 * mult * (1 + si * 0.15));
   const baseAtk  = Math.round(3  * Math.sqrt(mult) * (1 + si * 0.08));
   return {
-    hp:  isBoss ? Math.round(baseHp  * bossHpM  * hpMult)  : Math.round(baseHp  * hpMult),
-    atk: isBoss ? Math.round(baseAtk * bossAtkM * atkMult) : Math.round(baseAtk * atkMult),
-    spd: isBoss ? (1000 / 1500).toFixed(1) : (1000 / 2000).toFixed(1),
     evasion: enemyDef.evasion ?? 0,
+    critRes: enemyDef.critRes ?? 0,
   };
 }
 
@@ -335,7 +359,12 @@ function spawnEnemy() {
   elEnemyArea.classList.remove("multi-mode");
   elMultiGrid.innerHTML = "";
 
-  const enemy = makeEnemy(state.mapIndex, state.stageInMap);
+  const def = MAP_DEFS[state.mapIndex];
+  const spawnRare = state.stageInMap !== 9 && def.rare
+    && Math.random() < (def.rare.rate ?? 0.04);
+  const enemy = spawnRare
+    ? makeRareEnemy(state.mapIndex, state.stageInMap)
+    : makeEnemy(state.mapIndex, state.stageInMap);
   state.currentEnemy = enemy;
   state.enemyHp      = enemy.hp;
   state.enemyMaxHp   = enemy.hp;
@@ -347,8 +376,9 @@ function spawnEnemy() {
   updateStageDisplay();
   updateHpDisplay();
 
-  if (enemy.isBoss) addLog(`★ BOSS: ${enemy.name} が現れた！`);
-  else              addLog(`${enemy.name} が現れた！`);
+  if (enemy.isRare)  addLog(`★ RARE: ${enemy.name} が現れた！`);
+  else if (enemy.isBoss) addLog(`★ BOSS: ${enemy.name} が現れた！`);
+  else               addLog(`${enemy.name} が現れた！`);
 
   clearInterval(enemyAttackIntervalId);
   enemyAttackIntervalId = setInterval(() => enemyTick(enemy), enemy.atkInterval);
@@ -420,7 +450,8 @@ function tick() {
   let dmg = s.totalAtk;
   let suffix = "";
   let dmgType = null;
-  if (Math.random() < s.critChance) {
+  const effectiveCrit = Math.max(0, s.critChance - state.currentEnemy.critRes);
+  if (Math.random() < effectiveCrit) {
     dmg = Math.floor(dmg * 1.5);
     suffix  = " ★クリティカル！";
     dmgType = "crit";
@@ -464,7 +495,10 @@ function tickMulti(s) {
   let dmg = s.totalAtk;
   let dmgType = null;
   let suffix = "";
-  if (Math.random() < s.critChance) {
+  // 一括モードは全員平均のcritRes で判定（alive の平均）
+  const avgCritRes = alive.reduce((a, e) => a + (e.critRes || 0), 0) / alive.length;
+  const effectiveCritM = Math.max(0, s.critChance - avgCritRes);
+  if (Math.random() < effectiveCritM) {
     dmg     = Math.floor(dmg * 1.5);
     dmgType = "crit";
     suffix  = " ★クリティカル！";
@@ -825,7 +859,13 @@ function rollDrops(enemy) {
 
 function playDefeatSound() {
   if (soundMuted) return;
-  const notes = [523, 659, 784];
+  // ペンタトニックスケール（何を組み合わせても不協和にならない）
+  const PENTA = [261.63, 293.66, 329.63, 392.00, 440.00,
+                 523.25, 587.33, 659.25, 783.99, 880.00,
+                 1046.5, 1174.7, 1318.5];
+  // ランダムな起点から連続する3音をアルペジオ再生
+  const root = Math.floor(Math.random() * (PENTA.length - 2));
+  const notes = [PENTA[root], PENTA[root + 1], PENTA[root + 2]];
   notes.forEach((freq, i) => {
     const osc  = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -1042,22 +1082,24 @@ function renderMonsterBook() {
         ? `<span class="multi-badge">一括×${bossKills}</span>`
         : `<span class="multi-badge locked-multi">一括まで${100 - bossKills}回</span>`;
 
-    const allDefs = [...def.enemies, def.boss];
+    const allDefs    = [...def.enemies, def.boss]; // マップ制覇チェック（レア除外）
+    const displayDefs = [...allDefs, ...(def.rare ? [{ ...def.rare, _isRare: true }] : [])];
     const allMax  = mapReached && allDefs.every(e =>
       (state.monsterKills[`${mi}:${e.name}`] || 0) >= 999
     );
 
-    const cards = allDefs.map((enemyDef, idx) => {
-      const isBoss = idx === def.enemies.length;
+    const cards = displayDefs.map((enemyDef, idx) => {
+      const isRare = !!enemyDef._isRare;
+      const isBoss = !isRare && idx === def.enemies.length;
       const key    = `${mi}:${enemyDef.name}`;
       const kills  = state.monsterKills[key] || 0;
       const tier   = getItemTier(kills);
       const next   = BONUS_THRESHOLDS[tier];
 
-      if (!mapReached) {
-        return `<div class="book-monster-card unseen">
+      if (kills === 0) {
+        return `<div class="book-monster-card unseen-enemy">
           <img class="book-monster-img" src="${enemyDef.img}">
-          <div class="book-monster-name ${isBoss ? "boss" : ""}">???</div>
+          <div class="book-monster-name">???</div>
         </div>`;
       }
 
@@ -1075,18 +1117,22 @@ function renderMonsterBook() {
         .map(d => `${ITEM_MAP[d.itemId]?.name ?? d.itemId}`)
         .join("<br>");
 
-      const st = computeEnemyStats(mi, enemyDef, isBoss);
-      const evaRow = st.evasion > 0 ? `<span class="bmc-stat-eva">EVA ${Math.round(st.evasion * 100)}%</span>` : "";
+      const st = computeEnemyStats(mi, enemyDef, isBoss, isRare);
+      const evaSpan  = st.evasion > 0 ? `<span class="bmc-stat-eva">EVA ${Math.round(st.evasion * 100)}%</span>` : "";
+      const critSpan = st.critRes > 0 ? `<span class="bmc-stat-crit">CRI耐 ${Math.round(st.critRes * 100)}%</span>` : "";
+      const cardCls = isRare ? "rare-card" : isBoss ? "boss-card" : "";
+      const topBadge = isRare
+        ? `<span class="rare-badge">RARE</span>`
+        : `<span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>`;
+      const namePrefix = isRare ? "✦ " : isBoss ? "★ " : "";
 
-      return `<div class="book-monster-card ${isBoss ? "boss-card" : ""}">
+      return `<div class="book-monster-card ${cardCls}">
         <div class="bmc-top">
           <img class="book-monster-img" src="${enemyDef.img}">
-          <span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>
+          ${topBadge}
         </div>
-        <div class="book-monster-name ${isBoss ? "boss" : ""}">${isBoss ? "★ " + enemyDef.name : enemyDef.name}</div>
-        <div class="bmc-stats">
-          <span>HP ${st.hp}</span><span>ATK ${st.atk}</span>${evaRow}
-        </div>
+        <div class="book-monster-name ${isBoss ? "boss" : isRare ? "rare" : ""}">${namePrefix}${enemyDef.name}</div>
+        ${(evaSpan || critSpan) ? `<div class="bmc-stats">${evaSpan}${critSpan}</div>` : ""}
         <div class="kill-count">×${kills} ${nextHint}</div>
         ${killTiers ? `<div class="bmc-tiers">${killTiers}</div>` : ""}
         <div class="book-drop-info">${drops}</div>

@@ -1064,9 +1064,31 @@ html, body {
   background: #fff0f0;
   border-color: #e8c0c0;
 }
+.book-monster-card.rare-card {
+  background: #fffce0;
+  border-color: #d4b800;
+  box-shadow: 0 0 6px #d4b80044;
+}
+.rare-badge {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  font-size: 0.52rem;
+  font-weight: bold;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: #ffd700;
+  color: #7a5a00;
+  border: 1px solid #c8a800;
+}
+.book-monster-name.rare { color: #8a6a00; }
 .book-monster-card.unseen {
-  opacity: 0.3;
+  opacity: 0.25;
   filter: grayscale(1);
+}
+.book-monster-card.unseen-enemy {
+  opacity: 0.45;
+  filter: grayscale(1) brightness(0.85);
 }
 .bmc-top {
   position: relative;
@@ -1114,6 +1136,10 @@ html, body {
 }
 .bmc-stat-eva {
   color: #7a5000;
+  font-weight: bold;
+}
+.bmc-stat-crit {
+  color: #6a1a7a;
   font-weight: bold;
 }
 .bmc-tiers {
