@@ -204,7 +204,7 @@ function enemyTick(enemy) {
   if (state.playerHp <= 0) {
     stopEnemyAttack();
     addLog("倒れた…マップ1からやり直し！");
-    setTimeout(() => {
+    showDeathOverlay(() => {
       state.playerHp    = state.playerMaxHp;
       state.mapIndex    = 0;
       state.stageInMap  = 0;
@@ -212,7 +212,7 @@ function enemyTick(enemy) {
       elEnemyArea.classList.remove("multi-mode");
       spawnEnemy();
       updateStatsDisplay();
-    }, 2000);
+    });
   }
 }
 
@@ -231,7 +231,7 @@ function multiEnemyTick() {
   if (state.playerHp <= 0) {
     stopEnemyAttack();
     addLog("倒れた…マップ1からやり直し！");
-    setTimeout(() => {
+    showDeathOverlay(() => {
       state.playerHp    = state.playerMaxHp;
       state.mapIndex    = 0;
       state.stageInMap  = 0;
@@ -239,7 +239,7 @@ function multiEnemyTick() {
       elEnemyArea.classList.remove("multi-mode");
       spawnEnemy();
       updateStatsDisplay();
-    }, 2000);
+    });
   }
 }
 
@@ -429,7 +429,79 @@ function checkMultiComplete() {
   state.mapIndex++;
   if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
   addSystemLog(`★ マップ一括クリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
-  spawnEnemy();
+  showMapClearOverlay(MAP_DEFS[state.mapIndex].name);
+}
+
+// --- デス演出 ---
+function showDeathOverlay(onDone) {
+  const overlay = document.getElementById('death-overlay');
+  const container = document.getElementById('death-particles');
+  const symbols = ['×', '✕', '♡', '…', '･'];
+  const colors  = ['#e86080', '#c04060', '#a03050', '#804060', '#603050'];
+  container.innerHTML = '';
+  for (let i = 0; i < 16; i++) {
+    const p = document.createElement('span');
+    p.className = 'dcp';
+    p.textContent = symbols[i % symbols.length];
+    p.style.left            = (5 + Math.random() * 90) + '%';
+    p.style.top             = (5 + Math.random() * 85) + '%';
+    p.style.color           = colors[Math.floor(Math.random() * colors.length)];
+    p.style.fontSize        = (0.5 + Math.random() * 0.7) + 'rem';
+    p.style.animationDelay    = (Math.random() * 1.5).toFixed(2) + 's';
+    p.style.animationDuration = (1.2 + Math.random() * 1.0).toFixed(2) + 's';
+    container.appendChild(p);
+  }
+  overlay.classList.remove('active', 'exit');
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => overlay.classList.add('active'));
+  setTimeout(() => {
+    overlay.classList.add('exit');
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      overlay.classList.remove('active', 'exit');
+      onDone();
+    }, 320);
+  }, 1400);
+}
+
+// --- マップクリア演出 ---
+function showMapClearOverlay(newMapName) {
+  const overlay = document.getElementById('map-clear-overlay');
+  const nameEl  = document.getElementById('map-clear-mapname');
+  nameEl.textContent = `「${newMapName}」`;
+
+  // パーティクル生成
+  const container = document.getElementById('map-clear-particles');
+  const symbols   = ['★', '✦', '♪', '◆', '●', '✿'];
+  const colors    = ['#ff80aa','#ffa040','#ffe040','#80d0a0','#80b0ff','#d080ff'];
+  container.innerHTML = '';
+  for (let i = 0; i < 22; i++) {
+    const p = document.createElement('span');
+    p.className = 'mcp';
+    p.textContent = symbols[i % symbols.length];
+    p.style.left            = (5 + Math.random() * 90) + '%';
+    p.style.top             = (10 + Math.random() * 80) + '%';
+    p.style.color           = colors[Math.floor(Math.random() * colors.length)];
+    p.style.fontSize        = (0.55 + Math.random() * 0.75) + 'rem';
+    p.style.animationDelay    = (Math.random() * 2).toFixed(2) + 's';
+    p.style.animationDuration = (1.4 + Math.random() * 1.2).toFixed(2) + 's';
+    container.appendChild(p);
+  }
+
+  // 表示 → アニメーション開始
+  overlay.classList.remove('active', 'exit');
+  overlay.style.display = 'flex';
+  requestAnimationFrame(() => overlay.classList.add('active'));
+
+  // 自動クローズ
+  setTimeout(() => {
+    overlay.classList.add('exit');
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      overlay.classList.remove('active', 'exit');
+      spawnEnemy();
+    }, 210);
+  }, 1100);
 }
 
 // --- 通常の敵をセット ---
@@ -568,6 +640,8 @@ function tick() {
       state.mapIndex++;
       if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
       addSystemLog(`★ マップクリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
+      showMapClearOverlay(MAP_DEFS[state.mapIndex].name);
+      return;
     }
     spawnEnemy();
   }

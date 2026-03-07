@@ -1272,6 +1272,231 @@ html, body {
 }
 
 /* =====================
+   デス演出
+   ===================== */
+#death-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(40, 5, 5, 0.6);
+  border-radius: 14px;
+}
+
+#death-box {
+  position: relative;
+  background: linear-gradient(140deg, #2a1020 0%, #1a0a28 55%, #200a10 100%);
+  border: 3px solid #883050;
+  border-radius: 26px;
+  padding: 28px 44px 24px;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(180, 20, 60, 0.4), 0 2px 10px rgba(0,0,0,0.4);
+  min-width: 200px;
+}
+
+@keyframes deathBoxIn {
+  0%   { transform: scale(0.6) translateY(-16px); opacity: 0; }
+  65%  { transform: scale(1.04) translateY(2px);  opacity: 1; }
+  100% { transform: scale(1) translateY(0);        opacity: 1; }
+}
+@keyframes deathBoxOut {
+  from { transform: scale(1);    opacity: 1; }
+  to   { transform: scale(0.85); opacity: 0; }
+}
+
+#death-overlay.active #death-box {
+  animation: deathBoxIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+#death-overlay.exit #death-box {
+  animation: deathBoxOut 0.3s ease-in forwards;
+}
+
+#death-label {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #e86080;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 18px rgba(240, 60, 100, 0.7);
+  position: relative;
+}
+#death-overlay.active #death-label {
+  animation: mcSlideUp 0.4s ease 0.1s both;
+}
+
+#death-sub {
+  font-size: 0.78rem;
+  color: #a06880;
+  margin-top: 8px;
+  letter-spacing: 0.1em;
+  position: relative;
+}
+#death-overlay.active #death-sub {
+  animation: mcSlideUp 0.4s ease 0.25s both;
+}
+
+#death-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.dcp {
+  position: absolute;
+  pointer-events: none;
+  animation: dcpFloat linear infinite;
+  opacity: 0;
+}
+@keyframes dcpFloat {
+  0%   { transform: translateY(0)    scale(1)   rotate(0deg);   opacity: 0; }
+  15%  { opacity: 0.7; }
+  50%  { transform: translateY(20px) scale(0.9) rotate(-20deg); opacity: 0.6; }
+  85%  { opacity: 0.3; }
+  100% { transform: translateY(44px) scale(0.7) rotate(-40deg); opacity: 0; }
+}
+
+/* =====================
+   マップクリア演出
+   ===================== */
+#map-clear-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 10, 40, 0.52);
+  border-radius: 14px;
+}
+
+#map-clear-box {
+  position: relative;
+  background: linear-gradient(140deg, #fff4fa 0%, #f0eaff 55%, #eafff4 100%);
+  border: 3px solid #e0aadc;
+  border-radius: 26px;
+  padding: 30px 44px 26px;
+  text-align: center;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(180, 80, 200, 0.3), 0 2px 10px rgba(0,0,0,0.18);
+  min-width: 220px;
+}
+
+/* ボックス出現 */
+@keyframes mcBoxPop {
+  0%   { transform: scale(0.5) translateY(20px); opacity: 0; }
+  70%  { transform: scale(1.06) translateY(-4px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes mcBoxOut {
+  from { transform: scale(1); opacity: 1; }
+  to   { transform: scale(0.75); opacity: 0; }
+}
+
+#map-clear-overlay.active #map-clear-box {
+  animation: mcBoxPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+#map-clear-overlay.exit #map-clear-box {
+  animation: mcBoxOut 0.4s ease-in forwards;
+}
+
+/* ボックスの光沢シマー */
+#map-clear-box::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255,255,255,0.55) 50%,
+    transparent 80%
+  );
+  background-size: 300% 100%;
+  animation: mcShimmer 2.2s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+@keyframes mcShimmer {
+  0%, 100% { background-position: -100% 0; }
+  50%       { background-position: 200%  0; }
+}
+
+/* CLEAR! テキスト */
+#map-clear-label {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  background: linear-gradient(
+    90deg,
+    #ff6090, #ff9030, #f0d020,
+    #40c870, #50a0ff, #c060ff, #ff6090
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: mcRainbow 1.8s linear infinite;
+  position: relative;
+}
+@keyframes mcRainbow {
+  from { background-position: 0%   50%; }
+  to   { background-position: 300% 50%; }
+}
+
+/* マップ名 */
+#map-clear-mapname {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #5a2880;
+  margin-top: 10px;
+  position: relative;
+}
+#map-clear-overlay.active #map-clear-mapname {
+  animation: mcSlideUp 0.45s ease 0.28s both;
+}
+
+/* サブテキスト */
+#map-clear-sub {
+  font-size: 0.8rem;
+  color: #a070c0;
+  margin-top: 5px;
+  letter-spacing: 0.1em;
+  position: relative;
+}
+#map-clear-overlay.active #map-clear-sub {
+  animation: mcSlideUp 0.45s ease 0.42s both;
+}
+
+@keyframes mcSlideUp {
+  from { transform: translateY(14px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* パーティクル */
+#map-clear-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.mcp {
+  position: absolute;
+  pointer-events: none;
+  animation: mcpFloat linear infinite;
+  opacity: 0;
+}
+@keyframes mcpFloat {
+  0%   { transform: translateY(0)     scale(1)    rotate(0deg);   opacity: 0; }
+  15%  { opacity: 0.9; }
+  50%  { transform: translateY(-28px) scale(1.2)  rotate(180deg); opacity: 1; }
+  85%  { opacity: 0.7; }
+  100% { transform: translateY(-56px) scale(0.8)  rotate(360deg); opacity: 0; }
+}
+
+/* =====================
    エクスポート/インポートモーダル
    ===================== */
 .savedata-modal-box {
