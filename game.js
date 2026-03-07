@@ -114,6 +114,7 @@ const state = {
   currentEnemy: null,
   monsterKills: {},
   multiEnemies: null, // 一括討伐モード中の敵リスト（{ ...enemy, currentHp }[]）
+  refine: null,       // 精製中: { recipeId, elapsed: ms, duration: ms, countLeft: number|-1 }
 };
 
 // --- 定数 ---
@@ -134,6 +135,7 @@ const PANEL_ICONS = {
   "pi-player":    { src: "", alt: "能" }, // 例: "img/icon/status.png"
   "pi-inventory": { src: "", alt: "荷" }, // 例: "img/icon/bag.png"
   "pi-shop":      { src: "", alt: "店" }, // 例: "img/icon/shop.png"
+  "pi-refine":    { src: "", alt: "精" }, // 例: "img/icon/refine.png"
 };
 
 // --- DOM 参照 ---
@@ -417,7 +419,7 @@ function checkMultiComplete() {
   if (!state.multiEnemies) return;
   if (state.multiEnemies.some(e => e.currentHp > 0)) return;
   stopEnemyAttack();
-  const hadFinal = state.multiEnemies.some(e => e.isFinal);
+  const hadFinal = state.multiEnemies.some(e => e.isFinal && e.isBoss);
   state.multiEnemies = null;
   _lastInterval = -1; // 通常速度に戻すため強制リセット
   elEnemyArea.classList.remove("multi-mode");
@@ -558,7 +560,7 @@ function tick() {
     rollDrops(defeatedEnemy);
     recordKill(state.mapIndex, defeatedEnemy.name);
 
-    if (defeatedEnemy.isFinal) { gameClear(); return; }
+    if (defeatedEnemy.isFinal && defeatedEnemy.isBoss) { gameClear(); return; }
 
     state.stageInMap++;
     if (state.stageInMap >= 10) {
@@ -686,9 +688,175 @@ function buyShopStat(key, n = 1) {
   addSystemLog(`${key.toUpperCase()}×${n}強化！ ${def.stat.toUpperCase()}が合計+${total} (次回: ${shopStatCost(key)}G)`);
 }
 
+// --- 精製 ---
+let refineIntervalId = null;
+const REFINE_TICK_MS = 100;
+
+function canRefine(recipe) {
+  return recipe.inputs.every(inp => (state.inventory[inp.itemId] || 0) >= inp.count);
+}
+
+function consumeRefineInputs(recipe) {
+  recipe.inputs.forEach(inp => {
+    state.inventory[inp.itemId] = (state.inventory[inp.itemId] || 0) - inp.count;
+  });
+}
+
+function returnRefineInputs(recipe) {
+  recipe.inputs.forEach(inp => {
+    state.inventory[inp.itemId] = (state.inventory[inp.itemId] || 0) + inp.count;
+  });
+}
+
+function startRefine(recipeId, count) {
+  if (state.refine) return;
+  const recipe = REFINE_RECIPES.find(r => r.id === recipeId);
+  if (!recipe || !canRefine(recipe)) return;
+  consumeRefineInputs(recipe);
+  state.refine = {
+    recipeId,
+    elapsed:   0,
+    duration:  recipe.time * 1000,
+    countLeft: count, // -1 = 無限
+  };
+  invalidateStats();
+  clearInterval(refineIntervalId);
+  refineIntervalId = setInterval(refineTick, REFINE_TICK_MS);
+  updateRefineDisplay();
+  updateInventoryDisplay();
+}
+
+function cancelRefine() {
+  if (!state.refine) return;
+  const recipe = REFINE_RECIPES.find(r => r.id === state.refine.recipeId);
+  if (recipe) returnRefineInputs(recipe);
+  clearInterval(refineIntervalId);
+  refineIntervalId = null;
+  state.refine = null;
+  invalidateStats();
+  updateRefineDisplay();
+  updateInventoryDisplay();
+  updateStatsDisplay();
+}
+
+function refineTick() {
+  if (!state.refine) { clearInterval(refineIntervalId); return; }
+  state.refine.elapsed += REFINE_TICK_MS;
+  updateRefineProgress();
+  if (state.refine.elapsed >= state.refine.duration) {
+    completeOneRefine();
+  }
+}
+
+function completeOneRefine() {
+  const recipe = REFINE_RECIPES.find(r => r.id === state.refine.recipeId);
+  if (!recipe) { state.refine = null; return; }
+
+  // 成果物を追加
+  const outId = recipe.output.itemId;
+  const prevCount = state.inventory[outId] || 0;
+  state.inventory[outId] = prevCount + recipe.output.count;
+  const newCount = state.inventory[outId];
+  const prevTier = getItemTier(prevCount);
+  const newTier  = getItemTier(newCount);
+  addSystemLog(`${recipe.name} 完成！ ${ITEM_MAP[outId]?.name ?? outId} ×${newCount}`);
+  if (newTier > prevTier) addSystemLog(`★ ${ITEM_MAP[outId]?.name} Tier${newTier} 解放！`);
+  invalidateStats();
+  updateStatsDisplay();
+  updateInventoryDisplay();
+
+  // 次の精製へ
+  const cl = state.refine.countLeft;
+  const next = cl === -1 ? -1 : cl - 1;
+
+  if (next !== 0 && canRefine(recipe)) {
+    consumeRefineInputs(recipe);
+    state.refine.elapsed   = 0;
+    state.refine.countLeft = next;
+    updateRefineDisplay();
+    updateInventoryDisplay();
+  } else {
+    if (next !== 0) addSystemLog("素材不足で精製が停止しました");
+    clearInterval(refineIntervalId);
+    refineIntervalId = null;
+    state.refine = null;
+    updateRefineDisplay();
+    updateInventoryDisplay();
+  }
+}
+
+function updateRefineProgress() {
+  if (!state.refine) return;
+  const pct = Math.min(100, (state.refine.elapsed / state.refine.duration) * 100);
+  const remain = ((state.refine.duration - state.refine.elapsed) / 1000).toFixed(1);
+  const bar  = document.querySelector(".refine-bar");
+  const time = document.querySelector(".refine-time");
+  if (bar)  bar.style.width    = pct + "%";
+  if (time) time.textContent   = remain + "s";
+}
+
+function updateRefineDisplay() {
+  const el = document.getElementById("refine-content");
+  if (!el) return;
+
+  let html = "";
+
+  // 精製中エリア
+  if (state.refine) {
+    const recipe  = REFINE_RECIPES.find(r => r.id === state.refine.recipeId);
+    const pct     = Math.min(100, (state.refine.elapsed / state.refine.duration) * 100);
+    const remain  = ((state.refine.duration - state.refine.elapsed) / 1000).toFixed(1);
+    const clLabel = state.refine.countLeft === -1 ? "∞" : `残り ${state.refine.countLeft}回`;
+    html += `
+      <div class="refine-active">
+        <div class="refine-active-info">
+          <span class="refine-active-name">${recipe?.name ?? ""}</span>
+          <span class="refine-active-count">${clLabel}</span>
+          <button class="refine-cancel-btn" onclick="cancelRefine()">✕ キャンセル</button>
+        </div>
+        <div class="refine-progress-wrap"><div class="refine-bar" style="width:${pct}%"></div></div>
+        <div class="refine-time">${remain}s</div>
+      </div>`;
+  }
+
+  // レシピ一覧
+  REFINE_RECIPES.forEach(recipe => {
+    const isActive = !!state.refine;
+    const ok = !isActive && canRefine(recipe);
+
+    const chipsHtml = recipe.inputs.map(inp => {
+      const have   = state.inventory[inp.itemId] || 0;
+      const enough = have >= inp.count;
+      const name   = ITEM_MAP[inp.itemId]?.name ?? inp.itemId;
+      return `<span class="refine-chip${enough ? "" : " missing"}">${name}×${inp.count}<span class="refine-chip-have">(${have})</span></span>`;
+    }).join("");
+
+    const outName = ITEM_MAP[recipe.output.itemId]?.name ?? recipe.output.itemId;
+    html += `
+      <div class="refine-recipe-row${isActive ? " refining" : ""}">
+        <div class="refine-recipe-info">
+          <div class="refine-recipe-name">${recipe.name}</div>
+          <div class="refine-ingredients">${chipsHtml}</div>
+          <div class="refine-output">→ ${outName} ×${recipe.output.count}　${recipe.time}秒</div>
+        </div>
+        <div class="refine-btn-group">
+          <button class="refine-btn" ${ok ? "" : "disabled"} onclick="startRefine('${recipe.id}', 1)">×1</button>
+          <button class="refine-btn" ${ok ? "" : "disabled"} onclick="startRefine('${recipe.id}', 10)">×10</button>
+          <button class="refine-btn" ${ok ? "" : "disabled"} onclick="startRefine('${recipe.id}', -1)">∞</button>
+        </div>
+      </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
 // --- 音 ---
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let soundMuted = false;
+const audioCtx  = new (window.AudioContext || window.webkitAudioContext)();
+const masterGain = audioCtx.createGain();
+masterGain.connect(audioCtx.destination);
+let soundMuted  = false;
+let soundVolume = 0.5;
+masterGain.gain.value = soundVolume;
 
 // ブラウザの自動再生ポリシー対策：ユーザー操作時に AudioContext を再開
 function resumeAudioCtx() {
@@ -709,6 +877,14 @@ const SVG_SOUND_OFF = `<svg width="18" height="18" viewBox="0 0 24 24" fill="cur
 function updateMuteBtn() {
   elMuteBtn.innerHTML = soundMuted ? SVG_SOUND_OFF : SVG_SOUND_ON;
   elMuteBtn.classList.toggle("muted", soundMuted);
+  document.getElementById("sound-ctrl").classList.toggle("muted", soundMuted);
+}
+
+function setVolume(val) {
+  soundVolume = Math.max(0, Math.min(1, val));
+  if (!soundMuted) masterGain.gain.value = soundVolume;
+  const slider = document.getElementById("volume-slider");
+  if (slider) slider.value = Math.round(soundVolume * 100);
 }
 
 function initSaveIcons() {
@@ -733,12 +909,20 @@ function initPanelIcons() {
   }
 }
 
-function togglePanel(id) {
-  document.getElementById(id).classList.toggle("open");
+function switchTab(paneId) {
+  document.querySelectorAll('#panel-tabs .tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.target === paneId);
+  });
+  document.querySelectorAll('#panel-content .tab-pane').forEach(pane => {
+    pane.classList.toggle('active', pane.id === paneId);
+  });
 }
+
+function togglePanel(id) {} // 互換スタブ（タブ化により不要）
 
 function toggleMute() {
   soundMuted = !soundMuted;
+  masterGain.gain.value = soundMuted ? 0 : soundVolume;
   updateMuteBtn();
 }
 
@@ -922,6 +1106,7 @@ function rollDrops(enemy) {
       invalidateStats();
       updateStatsDisplay();
       updateInventoryDisplay();
+      updateRefineDisplay();
     }
   });
 }
@@ -939,7 +1124,7 @@ function playDefeatSound() {
     const osc  = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain);
-    gain.connect(audioCtx.destination);
+    gain.connect(masterGain);
     osc.type = "sine";
     osc.frequency.value = freq;
     const t = audioCtx.currentTime + i * 0.12;
@@ -976,6 +1161,9 @@ function saveData() {
     cleared:      state.cleared,
     shopLevels:   state.shopLevels,
     monsterKills: state.monsterKills,
+    refine:       state.refine,
+    soundVolume,
+    soundMuted,
   }));
 }
 
@@ -1006,7 +1194,16 @@ function loadGame() {
   state.cleared      = data.cleared      || false;
   state.shopLevels   = data.shopLevels   || { vit: 0, agi: 0, dex: 0, luk: 0 };
   state.monsterKills = data.monsterKills || {};
+  state.refine       = data.refine       || null;
+  if (data.soundVolume != null) soundVolume = data.soundVolume;
+  if (data.soundMuted  != null) soundMuted  = data.soundMuted;
+  masterGain.gain.value = soundMuted ? 0 : soundVolume;
   invalidateStats();
+  // 精製途中なら再開
+  if (state.refine) {
+    clearInterval(refineIntervalId);
+    refineIntervalId = setInterval(refineTick, REFINE_TICK_MS);
+  }
   return true;
 }
 
@@ -1243,6 +1440,7 @@ function init() {
     elGameBg.style.backgroundImage = `url('${GAME_BG}')`;
   }
   updateMuteBtn();
+  setVolume(soundVolume);
   initSaveIcons();
   initPanelIcons();
   initStageGrid();
@@ -1251,6 +1449,7 @@ function init() {
   updateStatsDisplay();
   updateInventoryDisplay();
   updateShopDisplay();
+  updateRefineDisplay();
 
   if (loaded && state.cleared) gameClear();
   else                         spawnEnemy();

@@ -24,7 +24,11 @@
         </div>
         <div id="stage-grid"><!-- JS で生成 --></div>
       </div>
-      <button id="mute-btn" onclick="toggleMute()"></button>
+      <div id="sound-ctrl">
+        <button id="mute-btn" onclick="toggleMute()"></button>
+        <input type="range" id="volume-slider" min="0" max="100" value="50"
+               oninput="setVolume(this.value / 100)">
+      </div>
     </div>
 
     <!-- メインエリア -->
@@ -52,15 +56,15 @@
         </div>
       </div>
 
-      <!-- 右カラム：ステータス + インベントリ + システム + ボタン -->
+      <!-- 右カラム：タブ切り替え -->
       <div id="right-col">
-        <div class="panel open" id="player-panel">
-          <div class="panel-label" onclick="togglePanel('player-panel')">
-            <span class="panel-icon" id="pi-player"></span>
-            <span class="panel-title">ステータス</span>
-            <span class="panel-arrow">▼</span>
+        <!-- ステータス：常時表示 -->
+        <div id="stats-fixed">
+          <div id="stats-fixed-label">
+            <span class="tab-icon" id="pi-player"></span>
+            <span>ステータス</span>
           </div>
-          <div class="panel-body" id="player-stats">
+          <div id="player-stats">
             <div class="stat-row">
               <div class="stat-box"><span class="stat-label">ATK</span><span id="stat-atk">1</span></div>
               <div class="stat-box"><span class="stat-label">STR</span><span id="stat-str">0</span></div>
@@ -82,71 +86,87 @@
             </div>
           </div>
         </div>
-        <div class="panel open" id="inventory-panel">
-          <div class="panel-label" onclick="togglePanel('inventory-panel')">
-            <span class="panel-icon" id="pi-inventory"></span>
-            <span class="panel-title">所持アイテム</span>
-            <span class="panel-arrow">▼</span>
-          </div>
-          <div class="panel-body" id="inventory-list"><span class="empty-msg">まだアイテムがありません</span></div>
+        <div id="tab-section">
+        <div id="panel-tabs">
+          <button class="tab-btn active" data-target="pane-inventory" onclick="switchTab('pane-inventory')">
+            <span class="tab-icon" id="pi-inventory"></span>
+            <span class="tab-label">アイテム</span>
+          </button>
+          <button class="tab-btn" data-target="pane-shop" onclick="switchTab('pane-shop')">
+            <span class="tab-icon" id="pi-shop"></span>
+            <span class="tab-label">ショップ</span>
+          </button>
+          <button class="tab-btn" data-target="pane-refine" onclick="switchTab('pane-refine')">
+            <span class="tab-icon" id="pi-refine"></span>
+            <span class="tab-label">精製</span>
+          </button>
         </div>
-        <div class="panel open" id="shop-panel">
-          <div class="panel-label shop-label" onclick="togglePanel('shop-panel')">
-            <span class="panel-icon" id="pi-shop"></span>
-            <span class="panel-title">ショップ</span>
-            <span id="gold-display">G <span id="gold">0</span></span>
-            <span class="panel-arrow">▼</span>
+        <div id="panel-content">
+          <!-- アイテム -->
+          <div class="tab-pane active" id="pane-inventory">
+            <div id="inventory-list"><span class="empty-msg">まだアイテムがありません</span></div>
           </div>
-          <div class="panel-body" id="shop-content">
-            <div class="shop-row">
-              <div class="shop-info">
-                <span class="shop-name">HP全回復</span>
-                <span class="shop-desc">HPを最大まで回復する</span>
-              </div>
-              <button class="shop-btn" id="btn-heal" onclick="buyHeal()"><span id="shop-heal-cost">20</span> G</button>
+          <!-- ショップ -->
+          <div class="tab-pane" id="pane-shop">
+            <div id="shop-gold-header">
+              <span id="gold-display">G <span id="gold">0</span></span>
             </div>
-            <div class="shop-row">
-              <div class="shop-info">
-                <span class="shop-name">体力強化</span>
-                <span class="shop-desc">VIT+2（最大HP+10）</span>
+            <div id="shop-content">
+              <div class="shop-row">
+                <div class="shop-info">
+                  <span class="shop-name">HP全回復</span>
+                  <span class="shop-desc">HPを最大まで回復する</span>
+                </div>
+                <button class="shop-btn" id="btn-heal" onclick="buyHeal()"><span id="shop-heal-cost">20</span> G</button>
               </div>
-              <div class="shop-btn-group">
-                <button class="shop-btn" id="btn-buy-vit" onclick="buyShopStat('vit',1)">×1 <span id="shop-vit-cost">15</span>G</button>
-                <button class="shop-btn" id="btn-buy-vit-10" onclick="buyShopStat('vit',10)">×10 <span id="shop-vit-cost-10">150</span>G</button>
+              <div class="shop-row">
+                <div class="shop-info">
+                  <span class="shop-name">体力強化</span>
+                  <span class="shop-desc">VIT+2（最大HP+10）</span>
+                </div>
+                <div class="shop-btn-group">
+                  <button class="shop-btn" id="btn-buy-vit" onclick="buyShopStat('vit',1)">×1 <span id="shop-vit-cost">15</span>G</button>
+                  <button class="shop-btn" id="btn-buy-vit-10" onclick="buyShopStat('vit',10)">×10 <span id="shop-vit-cost-10">150</span>G</button>
+                </div>
+              </div>
+              <div class="shop-row">
+                <div class="shop-info">
+                  <span class="shop-name">速度強化</span>
+                  <span class="shop-desc">AGI+3（攻撃速度↑）</span>
+                </div>
+                <div class="shop-btn-group">
+                  <button class="shop-btn" id="btn-buy-agi" onclick="buyShopStat('agi',1)">×1 <span id="shop-agi-cost">20</span>G</button>
+                  <button class="shop-btn" id="btn-buy-agi-10" onclick="buyShopStat('agi',10)">×10 <span id="shop-agi-cost-10">200</span>G</button>
+                </div>
+              </div>
+              <div class="shop-row">
+                <div class="shop-info">
+                  <span class="shop-name">命中強化</span>
+                  <span class="shop-desc">DEX+3（命中率+0.9%）</span>
+                </div>
+                <div class="shop-btn-group">
+                  <button class="shop-btn" id="btn-buy-dex" onclick="buyShopStat('dex',1)">×1 <span id="shop-dex-cost">15</span>G</button>
+                  <button class="shop-btn" id="btn-buy-dex-10" onclick="buyShopStat('dex',10)">×10 <span id="shop-dex-cost-10">150</span>G</button>
+                </div>
+              </div>
+              <div class="shop-row">
+                <div class="shop-info">
+                  <span class="shop-name">幸運強化</span>
+                  <span class="shop-desc">LUK+3（クリティカル率↑）</span>
+                </div>
+                <div class="shop-btn-group">
+                  <button class="shop-btn" id="btn-buy-luk" onclick="buyShopStat('luk',1)">×1 <span id="shop-luk-cost">25</span>G</button>
+                  <button class="shop-btn" id="btn-buy-luk-10" onclick="buyShopStat('luk',10)">×10 <span id="shop-luk-cost-10">250</span>G</button>
+                </div>
               </div>
             </div>
-            <div class="shop-row">
-              <div class="shop-info">
-                <span class="shop-name">速度強化</span>
-                <span class="shop-desc">AGI+3（攻撃速度↑）</span>
-              </div>
-              <div class="shop-btn-group">
-                <button class="shop-btn" id="btn-buy-agi" onclick="buyShopStat('agi',1)">×1 <span id="shop-agi-cost">20</span>G</button>
-                <button class="shop-btn" id="btn-buy-agi-10" onclick="buyShopStat('agi',10)">×10 <span id="shop-agi-cost-10">200</span>G</button>
-              </div>
-            </div>
-            <div class="shop-row">
-              <div class="shop-info">
-                <span class="shop-name">命中強化</span>
-                <span class="shop-desc">DEX+3（命中率+0.9%）</span>
-              </div>
-              <div class="shop-btn-group">
-                <button class="shop-btn" id="btn-buy-dex" onclick="buyShopStat('dex',1)">×1 <span id="shop-dex-cost">15</span>G</button>
-                <button class="shop-btn" id="btn-buy-dex-10" onclick="buyShopStat('dex',10)">×10 <span id="shop-dex-cost-10">150</span>G</button>
-              </div>
-            </div>
-            <div class="shop-row">
-              <div class="shop-info">
-                <span class="shop-name">幸運強化</span>
-                <span class="shop-desc">LUK+3（クリティカル率↑）</span>
-              </div>
-              <div class="shop-btn-group">
-                <button class="shop-btn" id="btn-buy-luk" onclick="buyShopStat('luk',1)">×1 <span id="shop-luk-cost">25</span>G</button>
-                <button class="shop-btn" id="btn-buy-luk-10" onclick="buyShopStat('luk',10)">×10 <span id="shop-luk-cost-10">250</span>G</button>
-              </div>
-            </div>
+          </div>
+          <!-- 精製 -->
+          <div class="tab-pane" id="pane-refine">
+            <div id="refine-content"></div>
           </div>
         </div>
+        </div><!-- /#tab-section -->
       </div>
 
     </div>
@@ -188,6 +208,7 @@
   <script src="data/items.js"></script>
   <script src="data/maps.js"></script>
   <script src="data/shop.js"></script>
+  <script src="data/refine.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

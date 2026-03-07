@@ -55,6 +55,29 @@ const ITEMS = [
       { str: 0, vit: 0, int: 0, dex: 3, agi:  6, luk: 20 },
       { str: 0, vit: 0, int: 0, dex: 5, agi: 10, luk: 35 },
     ] },
+
+  // --- 精製品 ---
+  { id: "refined_core",   name: "精製コア",
+    str: 5, vit: 5, int: 0, dex: 2, agi: 2, luk: 0,
+    bonus: [
+      { str: 10, vit: 10, int: 0, dex:  5, agi:  5, luk:  0 },
+      { str: 20, vit: 20, int: 0, dex: 10, agi: 10, luk:  0 },
+      { str: 35, vit: 35, int: 0, dex: 16, agi: 16, luk:  5 },
+    ] },
+  { id: "magic_essence",  name: "魔力精髄",
+    str: 0, vit: 2, int: 6, dex: 0, agi: 0, luk: 5,
+    bonus: [
+      { str: 0, vit:  5, int: 12, dex: 0, agi:  3, luk: 10 },
+      { str: 0, vit: 10, int: 22, dex: 3, agi:  6, luk: 18 },
+      { str: 0, vit: 16, int: 38, dex: 5, agi: 10, luk: 30 },
+    ] },
+  { id: "dragon_gem",     name: "竜晶",
+    str: 8, vit: 8, int: 8, dex: 4, agi: 4, luk: 6,
+    bonus: [
+      { str: 15, vit: 15, int: 15, dex:  8, agi:  8, luk: 12 },
+      { str: 28, vit: 28, int: 28, dex: 15, agi: 15, luk: 22 },
+      { str: 45, vit: 45, int: 45, dex: 25, agi: 25, luk: 38 },
+    ] },
 ];
 
 // アイテムIDから参照するためのマップ
