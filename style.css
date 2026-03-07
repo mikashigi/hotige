@@ -70,13 +70,13 @@ html, body {
 #game {
   width: min(96vw, 1024px);
   aspect-ratio: 16 / 9;
-  background: var(--game-bg);
   border: 2px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
   display: grid;
   grid-template-rows: 58px 1fr;
   position: relative;
+  isolation: isolate;
 }
 
 /* =====================
@@ -161,6 +161,17 @@ html, body {
   width: 14px;
   height: 14px;
   object-fit: contain;
+}
+
+/* ゲーム枠背景 */
+#game-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--game-bg);
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
 }
 
 /* ステージ背景 */

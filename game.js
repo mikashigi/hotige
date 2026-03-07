@@ -117,7 +117,9 @@ const state = {
 };
 
 // --- 定数 ---
-const CHAR_ICON = ""; // 例: "img/icon/char.png"
+const PAGE_BG  = ""; // ゲーム枠の外側（ページ背景）画像パス 例: "img/bg/field.png"
+const GAME_BG  = "img/bg/frame.png"; // ゲーム枠の背景画像パス 例: "img/bg/frame.png"
+const CHAR_ICON = "img/icon/char.png"; // 例: "img/icon/char.png"
 
 // セーブアイコン: src に画像パスを設定すると画像表示、空なら alt のテキストを表示
 const SAVE_ICONS = [
@@ -135,6 +137,7 @@ const PANEL_ICONS = {
 };
 
 // --- DOM 参照 ---
+const elGameBg     = document.getElementById("game-bg");
 const elMapName    = document.getElementById("map-name");
 const elMapIcon    = document.getElementById("map-icon");
 const elStageBg    = document.getElementById("stage-bg");
@@ -266,13 +269,24 @@ function updateStageDisplay() {
   const map = MAP_DEFS[state.mapIndex];
   elMapName.textContent = map.name;
 
-  // 背景画像
+  // 枠内ステージ背景
   if (map.bg) {
     elStageBg.style.backgroundImage = `url('${map.bg}')`;
     elStageBg.style.display = "block";
   } else {
     elStageBg.style.backgroundImage = "";
     elStageBg.style.display = "none";
+  }
+
+  // 枠外ページ背景（PAGE_BG が未設定の場合のみマップ別設定を反映）
+  if (!PAGE_BG) {
+    if (map.pageBg) {
+      document.body.style.backgroundImage = `url('${map.pageBg}')`;
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center";
+    } else {
+      document.body.style.backgroundImage = "";
+    }
   }
 
   // マップアイコン
@@ -493,9 +507,7 @@ function showDamageNumber(text, type) {
 
 function flashEnemyHit() {
   const target = state.multiEnemies !== null ? elMultiGrid : elEnemyImg;
-  if (!target) return;
-  target.classList.remove("enemy-hit");
-  void target.offsetWidth;
+  if (!target || target.classList.contains("enemy-hit")) return;
   target.classList.add("enemy-hit");
   target.addEventListener("animationend", () => target.classList.remove("enemy-hit"), { once: true });
 }
@@ -615,6 +627,7 @@ function recordKill(mapIndex, enemyName) {
     }
   }
 
+  invalidateStats();
   updateStatsDisplay();
 }
 
@@ -666,6 +679,7 @@ function buyShopStat(key, n = 1) {
   state.gold -= cost;
   state.shopLevels[key] += n;
   updateShopDisplay();
+  invalidateStats();
   updateStatsDisplay();
   const def   = SHOP_DEFS[key];
   const total = state.shopLevels[key] * def.amount;
@@ -730,6 +744,7 @@ function toggleMute() {
 
 // --- ステータス計算 ---
 function computePlayerStats() {
+  if (_cachedStats) return _cachedStats;
   const raw = { str: 0, vit: 0, int: 0, dex: 0, agi: 0, luk: 0 };
 
   for (const [itemId, count] of Object.entries(state.inventory)) {
@@ -770,19 +785,25 @@ function computePlayerStats() {
     }
   }
 
-  return {
+  _cachedStats = {
     ...raw,
     totalAtk:       state.attack + Math.floor(raw.str * 0.8) + Math.floor(raw.int * 0.5),
     playerMaxHp:    50 + raw.vit * 5,
-    hitRate:        Math.min(0.99, 0.90 + raw.dex * 0.003),
+    hitRate:        Math.min(0.99, 0.90 + raw.dex * 0.003 + raw.int * 0.001),
     attackInterval: Math.max(300, 1000 - raw.agi * 8),
-    critChance:     Math.min(0.50, raw.luk * 0.02),
+    critChance:     Math.min(0.50, raw.luk * 0.02 + raw.int * 0.005),
   };
+  return _cachedStats;
 }
 
 // --- 可変攻撃インターバル ---
 let attackIntervalId = null;
 let _lastInterval = -1;
+let _cachedStats = null;
+
+function invalidateStats() {
+  _cachedStats = null;
+}
 
 function resetAttackInterval(s) {
   const interval = state.multiEnemies
@@ -898,6 +919,7 @@ function rollDrops(enemy) {
       const newTier  = getItemTier(newCount);
       addSystemLog(`${item.name} を入手！ (×${newCount})`);
       if (newTier > prevTier) addSystemLog(`★ ${item.name} Tier${newTier} 解放！ボーナス加算！`);
+      invalidateStats();
       updateStatsDisplay();
       updateInventoryDisplay();
     }
@@ -923,6 +945,7 @@ function playDefeatSound() {
     const t = audioCtx.currentTime + i * 0.12;
     gain.gain.setValueAtTime(0.25, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
     osc.start(t);
     osc.stop(t + 0.3);
   });
@@ -983,6 +1006,7 @@ function loadGame() {
   state.cleared      = data.cleared      || false;
   state.shopLevels   = data.shopLevels   || { vit: 0, agi: 0, dex: 0, luk: 0 };
   state.monsterKills = data.monsterKills || {};
+  invalidateStats();
   return true;
 }
 
@@ -1210,6 +1234,14 @@ function renderMonsterBook() {
 
 // --- 初期化 ---
 function init() {
+  if (PAGE_BG) {
+    document.body.style.backgroundImage = `url('${PAGE_BG}')`;
+    document.body.style.backgroundSize = "cover";
+    document.body.style.backgroundPosition = "center";
+  }
+  if (GAME_BG) {
+    elGameBg.style.backgroundImage = `url('${GAME_BG}')`;
+  }
   updateMuteBtn();
   initSaveIcons();
   initPanelIcons();

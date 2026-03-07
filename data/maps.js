@@ -3,7 +3,8 @@
 // isFinal: true のボスを倒すとゲームクリア
 //
 // マップオブジェクトのフィールド:
-//   bg          : 背景画像ファイル名（省略時 = 背景なし）例: "img/bg/field.png"
+//   bg          : 枠内ステージ背景画像（省略時 = 背景なし）例: "img/bg/field_inner.png"
+//   pageBg      : 枠外ページ背景画像（省略時 = 変更なし）例: "img/bg/field.png"
 //   rare        : レアモンスター定義（省略時 = レアなし）マップ制覇ボーナスに非計上
 //   icon        : マップ名横のアイコン画像（省略時 = 非表示）例: "img/icon/field.png"
 //   mapBonus    : 全モンスター999体達成ボーナス
@@ -22,7 +23,8 @@ const MAP_DEFS = [
   // ===== マップ 0: 草原 =====
   {
     name: "草原",
-    bg:   "",   // 例: "img/bg/field.png"
+    bg:     "",
+    pageBg: "img/bg/field.png",
     icon: "",   // 例: "img/icon/field.png"
     mapBonus: { str:5, vit:5, dex:3, agi:3, luk:2 },
     enemies: [
