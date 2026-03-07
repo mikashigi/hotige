@@ -96,6 +96,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 4px;
   line-height: 1.2;
 }
 
@@ -106,10 +107,72 @@ html, body {
   letter-spacing: 0.05em;
 }
 
-#stage-num {
-  font-size: 0.7rem;
-  color: var(--text-mid);
-  letter-spacing: 0.04em;
+/* ステージグリッド */
+#map-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#map-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+#stage-grid {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+.stage-cell {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  background: var(--panel-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  position: relative;
+}
+.stage-cell.boss {
+  border-color: var(--yellow-dark);
+  background: var(--yellow);
+}
+.stage-cell.done {
+  background: var(--panel-hd);
+  border-color: var(--border);
+}
+.stage-cell.current {
+  border-color: #5a9a40;
+  background: #d0eebc;
+  box-shadow: 0 0 4px #5a9a4088;
+}
+.stage-cell.multi-active {
+  background: #ffd8b0;
+  border-color: #e0a060;
+}
+.stage-char {
+  font-size: 0.6rem;
+  line-height: 1;
+  visibility: hidden;
+}
+.stage-char img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+/* ステージ背景 */
+#stage-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.18;
+  pointer-events: none;
+  display: none;
 }
 
 #gold-display {
@@ -704,25 +767,85 @@ html, body {
 
 #save-buttons {
   display: flex;
-  gap: 8px;
+  gap: 5px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 #save-buttons button {
   flex: 1;
-  padding: 5px;
+  padding: 5px 4px;
   border: 1.5px solid var(--border);
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: bold;
   cursor: pointer;
   background: var(--btn-save);
   color: var(--text);
   transition: background 0.15s;
+  white-space: nowrap;
 }
-#save-buttons button:hover    { background: var(--btn-save-hv); }
-#save-buttons button:last-child { background: var(--btn-reset); }
-#save-buttons button:last-child:hover { background: var(--btn-reset-hv); }
+#save-buttons button:hover { background: var(--btn-save-hv); }
+#save-buttons .reset-btn   { background: var(--btn-reset); }
+#save-buttons .reset-btn:hover { background: var(--btn-reset-hv); }
+
+/* =====================
+   エクスポート/インポートモーダル
+   ===================== */
+.savedata-modal-box {
+  width: 70%;
+  max-height: 60%;
+}
+
+.savedata-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.savedata-hint {
+  font-size: 0.78rem;
+  color: var(--text-mid);
+}
+
+.savedata-textarea {
+  width: 100%;
+  height: 100px;
+  resize: vertical;
+  font-family: monospace;
+  font-size: 0.72rem;
+  padding: 6px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--stat-bg);
+  color: var(--text);
+  line-break: anywhere;
+}
+
+.savedata-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.savedata-btn {
+  padding: 5px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-bg);
+  color: var(--text-mid);
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.savedata-btn:hover { background: var(--panel-hd); }
+.savedata-btn.primary {
+  background: var(--yellow);
+  border-color: var(--yellow-dark);
+  color: #7a5a00;
+}
+.savedata-btn.primary:hover { background: var(--yellow-dark); color: #fff; }
 
 /* =====================
    モーダル共通
@@ -884,18 +1007,20 @@ html, body {
   font-style: italic;
 }
 .book-monster-cards {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 5px;
 }
 .book-monster-card {
   display: flex;
-  gap: 10px;
-  padding: 6px 8px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 6px 4px;
+  gap: 2px;
   background: var(--stat-bg);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  align-items: flex-start;
 }
 .book-monster-card.boss-card {
   background: #fff0f0;
@@ -905,50 +1030,68 @@ html, body {
   opacity: 0.3;
   filter: grayscale(1);
 }
+.bmc-top {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.bmc-top .tier-badge {
+  position: absolute;
+  top: 0;
+  right: 2px;
+}
 .book-monster-img {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   object-fit: contain;
   image-rendering: pixelated;
-  flex-shrink: 0;
-}
-.book-monster-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-.book-monster-head {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
 }
 .book-monster-name {
   font-weight: bold;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   color: var(--text);
+  width: 100%;
+  padding: 0 2px;
+  word-break: break-all;
+  line-height: 1.3;
 }
 .book-monster-name.boss { color: #8a2020; }
 .kill-count {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--text-muted);
-  margin-left: auto;
   white-space: nowrap;
 }
 .kill-max {
   color: #c05000;
   font-weight: bold;
 }
-.book-kill-tiers {
+.bmc-tiers {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.bmc-tier {
+  font-size: 0.58rem;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: var(--panel-hd);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+}
+.bmc-tier.cleared {
+  background: #c0e8a0;
+  border-color: #88c060;
+  color: #3a6a10;
 }
 .book-drop-info {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--text-muted);
+  width: 100%;
+  padding: 0 2px;
+  word-break: break-all;
+  line-height: 1.3;
 }
 .book-map-bonus {
   display: flex;

@@ -9,13 +9,20 @@
 <body>
   <div id="save-indicator">SAVED</div>
   <div id="game">
+    <div id="stage-bg"></div>
 
     <!-- ヘッダー -->
     <div id="header">
       <div id="book-btns">
         <button class="book-btn" onclick="openBook('item')">図鑑</button>
       </div>
-      <div id="stage-display"><span id="map-name">草原</span><span id="stage-num">1 / 10</span></div>
+      <div id="stage-display">
+        <div id="map-name-row">
+          <img id="map-icon" src="" alt="" style="display:none">
+          <span id="map-name">草原</span>
+        </div>
+        <div id="stage-grid"><!-- JS で生成 --></div>
+      </div>
       <button id="mute-btn" onclick="toggleMute()"></button>
     </div>
 
@@ -131,12 +138,33 @@
         </div>
         <div id="save-buttons">
           <button onclick="saveGame()">セーブ</button>
-          <button onclick="resetSave()">リセット</button>
+          <button onclick="openExportModal()">エクスポート</button>
+          <button onclick="openImportModal()">インポート</button>
+          <button class="reset-btn" onclick="resetSave()">リセット</button>
         </div>
       </div>
 
     </div>
   </div>
+  <!-- セーブデータ エクスポート/インポートモーダル -->
+  <div id="modal-savedata" class="modal-overlay" onclick="closeSaveDataModal()">
+    <div class="modal-box savedata-modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span id="savedata-title">セーブデータ</span>
+        <button class="modal-close" onclick="closeSaveDataModal()">✕</button>
+      </div>
+      <div class="modal-body savedata-body">
+        <p id="savedata-hint" class="savedata-hint"></p>
+        <textarea id="savedata-textarea" class="savedata-textarea" spellcheck="false"></textarea>
+        <div class="savedata-actions">
+          <button id="savedata-copy-btn" class="savedata-btn" onclick="copyExportData()">コピー</button>
+          <button id="savedata-apply-btn" class="savedata-btn primary" onclick="applyImport()">インポート実行</button>
+          <button class="savedata-btn" onclick="closeSaveDataModal()">閉じる</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 図鑑モーダル（統合） -->
   <div id="modal-book" class="modal-overlay" onclick="closeBook()">
     <div class="modal-box" onclick="event.stopPropagation()">

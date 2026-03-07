@@ -2,6 +2,11 @@
 // 1マップ=10ステージ、ステージ10はボス
 // isFinal: true のボスを倒すとゲームクリア
 //
+// マップオブジェクトのフィールド:
+//   bg          : 背景画像ファイル名（省略時 = 背景なし）例: "bg/field.png"
+//   icon        : マップ名横のアイコン画像（省略時 = 非表示）例: "icon/field.png"
+//   mapBonus    : 全モンスター999体達成ボーナス
+//
 // 各 enemy / boss オブジェクトのフィールド:
 //   name        : 表示名
 //   img         : 画像ファイル名
@@ -9,13 +14,13 @@
 //   hpMult      : HP倍率（省略時 1.0）
 //   atkMult     : ATK倍率（省略時 1.0）
 //   killBonus   : 討伐数ボーナス [100体, 500体, 999体] 各ステータスオブジェクト
-//
-// mapBonus: マップ内全モンスターを999体倒したときのボーナス
 
 const MAP_DEFS = [
   // ===== マップ 0: 草原 =====
   {
     name: "草原",
+    bg:   "",   // 例: "bg/field.png"
+    icon: "",   // 例: "icon/field.png"
     mapBonus: { str:5, vit:5, dex:3, agi:3, luk:2 },
     enemies: [
       { name: "スライム",  img: "enemy_slime.png",
@@ -39,6 +44,8 @@ const MAP_DEFS = [
   // ===== マップ 1: 森 =====
   {
     name: "森",
+    bg:   "",
+    icon: "",
     mapBonus: { str:8, vit:6, agi:4, dex:3 },
     enemies: [
       { name: "ウルフ",         img: "enemy_goblin.png",
@@ -59,6 +66,8 @@ const MAP_DEFS = [
   // ===== マップ 2: 洞窟 =====
   {
     name: "洞窟",
+    bg:   "",
+    icon: "",
     mapBonus: { str:10, vit:8, dex:5, agi:3 },
     enemies: [
       { name: "コウモリ",         img: "enemy_goblin.png",
@@ -79,6 +88,8 @@ const MAP_DEFS = [
   // ===== マップ 3: 砂漠 =====
   {
     name: "砂漠",
+    bg:   "",
+    icon: "",
     mapBonus: { str:10, vit:8, dex:5, luk:5 },
     enemies: [
       { name: "サンドワーム", img: "enemy_orc.png",
@@ -99,6 +110,8 @@ const MAP_DEFS = [
   // ===== マップ 4: 雪原 =====
   {
     name: "雪原",
+    bg:   "",
+    icon: "",
     mapBonus: { str:12, vit:10, int:8, agi:5 },
     enemies: [
       { name: "雪うさぎ", img: "enemy_orc.png",
@@ -119,6 +132,8 @@ const MAP_DEFS = [
   // ===== マップ 5: 火山 =====
   {
     name: "火山",
+    bg:   "",
+    icon: "",
     mapBonus: { str:15, vit:10, int:10, agi:5 },
     enemies: [
       { name: "ラバスライム",   img: "enemy_troll.png",
@@ -139,6 +154,8 @@ const MAP_DEFS = [
   // ===== マップ 6: 海底 =====
   {
     name: "海底",
+    bg:   "",
+    icon: "",
     mapBonus: { str:15, vit:12, dex:8, agi:8 },
     enemies: [
       { name: "人魚戦士", img: "enemy_troll.png",
@@ -159,6 +176,8 @@ const MAP_DEFS = [
   // ===== マップ 7: 天空 =====
   {
     name: "天空",
+    bg:   "",
+    icon: "",
     mapBonus: { str:18, vit:12, int:12, dex:8, agi:8 },
     enemies: [
       { name: "天空騎士", img: "enemy_dragon.png",
@@ -179,6 +198,8 @@ const MAP_DEFS = [
   // ===== マップ 8: 魔界 =====
   {
     name: "魔界",
+    bg:   "",
+    icon: "",
     mapBonus: { str:20, vit:15, int:15, dex:10, agi:10, luk:8 },
     enemies: [
       { name: "デーモン",   img: "enemy_dragon.png",
@@ -199,6 +220,8 @@ const MAP_DEFS = [
   // ===== マップ 9: 魔王城 =====
   {
     name: "魔王城",
+    bg:   "",
+    icon: "",
     isFinal: true,
     mapBonus: { str:25, vit:20, int:20, dex:15, agi:15, luk:15 },
     enemies: [

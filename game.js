@@ -72,9 +72,14 @@ const state = {
   multiEnemies: null, // 一括討伐モード中の敵リスト（{ ...enemy, currentHp }[]）
 };
 
+// --- 定数 ---
+const CHAR_ICON = ""; // 例: "img/char.png"
+
 // --- DOM 参照 ---
 const elMapName    = document.getElementById("map-name");
-const elStageNum   = document.getElementById("stage-num");
+const elMapIcon    = document.getElementById("map-icon");
+const elStageBg    = document.getElementById("stage-bg");
+const elStageGrid  = document.getElementById("stage-grid");
 const elEnemyName  = document.getElementById("enemy-name");
 const elEnemyImg   = document.getElementById("enemy-img");
 const elEnemyHp    = document.getElementById("enemy-hp");
@@ -174,14 +179,65 @@ function multiEnemyTick() {
   }
 }
 
+// --- ステージグリッド初期化 ---
+function initStageGrid() {
+  elStageGrid.innerHTML = "";
+  for (let i = 0; i < 10; i++) {
+    const cell = document.createElement("div");
+    cell.className = "stage-cell";
+    cell.dataset.idx = i;
+    if (i === 9) cell.classList.add("boss");
+    if (CHAR_ICON) {
+      const img = document.createElement("img");
+      img.src = CHAR_ICON;
+      img.className = "stage-char";
+      cell.appendChild(img);
+    } else {
+      const dot = document.createElement("span");
+      dot.className = "stage-char";
+      dot.textContent = "★";
+      cell.appendChild(dot);
+    }
+    elStageGrid.appendChild(cell);
+  }
+}
+
 // --- ステージ表示更新 ---
 function updateStageDisplay() {
-  elMapName.textContent  = MAP_DEFS[state.mapIndex].name;
-  if (state.multiEnemies !== null) {
-    elStageNum.textContent = "全 / 10";
+  const map = MAP_DEFS[state.mapIndex];
+  elMapName.textContent = map.name;
+
+  // 背景画像
+  if (map.bg) {
+    elStageBg.style.backgroundImage = `url('${map.bg}')`;
+    elStageBg.style.display = "block";
   } else {
-    elStageNum.textContent = `${state.stageInMap + 1} / 10`;
+    elStageBg.style.backgroundImage = "";
+    elStageBg.style.display = "none";
   }
+
+  // マップアイコン
+  if (map.icon) {
+    elMapIcon.src = map.icon;
+    elMapIcon.style.display = "inline-block";
+  } else {
+    elMapIcon.style.display = "none";
+  }
+
+  // ステージグリッド
+  const cells = elStageGrid.querySelectorAll(".stage-cell");
+  cells.forEach((cell, i) => {
+    cell.classList.remove("done", "current", "multi-active");
+    if (state.multiEnemies !== null) {
+      cell.classList.add("multi-active");
+    } else if (i < state.stageInMap) {
+      cell.classList.add("done");
+    } else if (i === state.stageInMap) {
+      cell.classList.add("current");
+    }
+    const charEl = cell.querySelector(".stage-char");
+    if (charEl) charEl.style.visibility = (i === state.stageInMap) ? "visible" : "hidden";
+  });
 }
 
 // --- 一括討伐モード開始 ---
@@ -457,8 +513,13 @@ function gameClear() {
   state.cleared = true;
   stopEnemyAttack();
   clearInterval(attackIntervalId);
-  elMapName.textContent  = "★ GAME CLEAR ★";
-  elStageNum.textContent = "";
+  elMapName.textContent = "★ GAME CLEAR ★";
+  elStageGrid.querySelectorAll(".stage-cell").forEach(c => {
+    c.classList.remove("done", "current", "multi-active");
+    c.classList.add("done");
+    const charEl = c.querySelector(".stage-char");
+    if (charEl) charEl.style.visibility = "hidden";
+  });
   addLog("魔王を倒した！ 世界に平和が訪れた！");
   addSystemLog("★★★ ゲームクリア！ おめでとうございます！ ★★★");
 }
@@ -778,6 +839,67 @@ function resetSave() {
   location.reload();
 }
 
+// --- エクスポート / インポート ---
+function openExportModal() {
+  saveData();
+  const raw     = localStorage.getItem(SAVE_KEY) || "{}";
+  const encoded = btoa(encodeURIComponent(raw));
+  const ta      = document.getElementById("savedata-textarea");
+  ta.value    = encoded;
+  ta.readOnly = true;
+  document.getElementById("savedata-title").textContent    = "セーブデータ エクスポート";
+  document.getElementById("savedata-hint").textContent     = "以下の文字列をコピーして保管してください";
+  document.getElementById("savedata-copy-btn").style.display  = "";
+  document.getElementById("savedata-copy-btn").textContent = "コピー";
+  document.getElementById("savedata-apply-btn").style.display = "none";
+  document.getElementById("modal-savedata").classList.add("open");
+}
+
+function openImportModal() {
+  const ta    = document.getElementById("savedata-textarea");
+  ta.value    = "";
+  ta.readOnly = false;
+  document.getElementById("savedata-title").textContent    = "セーブデータ インポート";
+  document.getElementById("savedata-hint").textContent     = "エクスポートした文字列を貼り付けてください";
+  document.getElementById("savedata-copy-btn").style.display  = "none";
+  document.getElementById("savedata-apply-btn").style.display = "";
+  document.getElementById("modal-savedata").classList.add("open");
+  ta.focus();
+}
+
+function closeSaveDataModal() {
+  document.getElementById("modal-savedata").classList.remove("open");
+}
+
+function copyExportData() {
+  const ta  = document.getElementById("savedata-textarea");
+  const btn = document.getElementById("savedata-copy-btn");
+  navigator.clipboard.writeText(ta.value).then(() => {
+    btn.textContent = "コピーしました！";
+    setTimeout(() => { btn.textContent = "コピー"; }, 1800);
+  }).catch(() => {
+    ta.select();
+    document.execCommand("copy");
+    btn.textContent = "コピーしました！";
+    setTimeout(() => { btn.textContent = "コピー"; }, 1800);
+  });
+}
+
+function applyImport() {
+  const encoded = document.getElementById("savedata-textarea").value.trim();
+  if (!encoded) return;
+  try {
+    const raw  = decodeURIComponent(atob(encoded));
+    const data = JSON.parse(raw);
+    if (typeof data.mapIndex !== "number") throw new Error("invalid");
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    closeSaveDataModal();
+    location.reload();
+  } catch {
+    alert("セーブデータが正しくありません。文字列を確認してください。");
+  }
+}
+
 // --- 図鑑 ---
 let currentBookTab = "item";
 
@@ -869,11 +991,7 @@ function renderMonsterBook() {
       if (!mapReached) {
         return `<div class="book-monster-card unseen">
           <img class="book-monster-img" src="${enemyDef.img}">
-          <div class="book-monster-info">
-            <div class="book-monster-head">
-              <span class="book-monster-name ${isBoss ? "boss" : ""}">???</span>
-            </div>
-          </div>
+          <div class="book-monster-name ${isBoss ? "boss" : ""}">???</div>
         </div>`;
       }
 
@@ -884,28 +1002,22 @@ function renderMonsterBook() {
       const killTiers = (enemyDef.killBonus || []).map((bonus, i) => {
         const thresh  = BONUS_THRESHOLDS[i];
         const cleared = kills >= thresh;
-        return `<div class="book-tier-line ${cleared ? "cleared" : "locked"}">
-          <span class="tier-badge tier-${cleared ? i + 1 : 0}">${TIER_LABELS[i + 1]}</span>
-          <span>${thresh}体: ${statStr(bonus)}</span>
-          ${cleared ? "<span>✓</span>" : ""}
-        </div>`;
+        return `<span class="bmc-tier ${cleared ? "cleared" : ""}">${TIER_LABELS[i + 1]}${cleared ? "✓" : ""}</span>`;
       }).join("");
 
       const drops = enemyDef.drops
-        .map(d => `${ITEM_MAP[d.itemId]?.name ?? d.itemId}(${Math.round(d.rate * 100)}%)`)
-        .join(" / ");
+        .map(d => `${ITEM_MAP[d.itemId]?.name ?? d.itemId}`)
+        .join("<br>");
 
       return `<div class="book-monster-card ${isBoss ? "boss-card" : ""}">
-        <img class="book-monster-img" src="${enemyDef.img}">
-        <div class="book-monster-info">
-          <div class="book-monster-head">
-            <span class="book-monster-name ${isBoss ? "boss" : ""}">${isBoss ? "★ " + enemyDef.name : enemyDef.name}</span>
-            <span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>
-            <span class="kill-count">×${kills} ${nextHint}</span>
-          </div>
-          ${killTiers ? `<div class="book-kill-tiers">${killTiers}</div>` : ""}
-          <div class="book-drop-info">DROP: ${drops}</div>
+        <div class="bmc-top">
+          <img class="book-monster-img" src="${enemyDef.img}">
+          <span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>
         </div>
+        <div class="book-monster-name ${isBoss ? "boss" : ""}">${isBoss ? "★ " + enemyDef.name : enemyDef.name}</div>
+        <div class="kill-count">×${kills} ${nextHint}</div>
+        ${killTiers ? `<div class="bmc-tiers">${killTiers}</div>` : ""}
+        <div class="book-drop-info">${drops}</div>
       </div>`;
     }).join("");
 
@@ -930,6 +1042,7 @@ function renderMonsterBook() {
 // --- 初期化 ---
 function init() {
   updateMuteBtn();
+  initStageGrid();
   const loaded = loadGame();
 
   updateStatsDisplay();
