@@ -212,6 +212,101 @@ html, body {
   transform-origin: center center;
 }
 
+/* =====================
+   一括討伐モード
+   ===================== */
+#enemy-area.multi-mode #enemy-img,
+#enemy-area.multi-mode #enemy-name,
+#enemy-area.multi-mode #hp-bar-wrap,
+#enemy-area.multi-mode #hp-display,
+#enemy-area.multi-mode #enemy-atk-display {
+  display: none;
+}
+
+#multi-enemy-grid {
+  display: none;
+  width: 100%;
+}
+
+#enemy-area.multi-mode #multi-enemy-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.multi-enemy-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 5px;
+  background: var(--stat-bg);
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  transition: opacity 0.3s;
+}
+
+.multi-enemy-card.dead {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+
+.multi-enemy-img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.multi-enemy-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.multi-enemy-name {
+  font-size: 0.55rem;
+  font-weight: bold;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mini-hp-bar-wrap {
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.mini-hp-bar {
+  height: 100%;
+  width: 100%;
+  background: var(--hp-bar);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+/* 図鑑の一括バッジ */
+.multi-badge {
+  font-size: 0.6rem;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #ffe0a0;
+  color: #7a4a00;
+  border: 1px solid #d9a040;
+}
+
+.multi-badge.locked-multi {
+  background: #e8e8e8;
+  color: #888;
+  border-color: #ccc;
+}
+
 /* ダメージエフェクト */
 .enemy-hit {
   animation: hitFlash 0.22s ease-out forwards;
@@ -575,8 +670,14 @@ html, body {
   color: var(--text-muted);
 }
 
+.shop-btn-group {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .shop-btn {
-  padding: 5px 12px;
+  padding: 5px 8px;
   background: var(--yellow);
   border: 1.5px solid var(--yellow-dark);
   border-radius: 8px;

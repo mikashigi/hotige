@@ -26,6 +26,7 @@
       <div id="left-col">
         <div id="enemy-area">
           <img id="enemy-img" src="enemy_slime.png" alt="敵">
+          <div id="multi-enemy-grid"></div>
           <div id="enemy-name">スライム</div>
           <div id="hp-bar-wrap"><div id="hp-bar"></div></div>
           <div id="hp-display">
@@ -91,28 +92,40 @@
                 <span class="shop-name">体力強化</span>
                 <span class="shop-desc">VIT+2（最大HP+10）</span>
               </div>
-              <button class="shop-btn" id="btn-buy-vit" onclick="buyShopStat('vit')"><span id="shop-vit-cost">15</span> G</button>
+              <div class="shop-btn-group">
+                <button class="shop-btn" id="btn-buy-vit" onclick="buyShopStat('vit',1)">×1 <span id="shop-vit-cost">15</span>G</button>
+                <button class="shop-btn" id="btn-buy-vit-10" onclick="buyShopStat('vit',10)">×10 <span id="shop-vit-cost-10">150</span>G</button>
+              </div>
             </div>
             <div class="shop-row">
               <div class="shop-info">
                 <span class="shop-name">速度強化</span>
                 <span class="shop-desc">AGI+3（攻撃速度↑）</span>
               </div>
-              <button class="shop-btn" id="btn-buy-agi" onclick="buyShopStat('agi')"><span id="shop-agi-cost">20</span> G</button>
+              <div class="shop-btn-group">
+                <button class="shop-btn" id="btn-buy-agi" onclick="buyShopStat('agi',1)">×1 <span id="shop-agi-cost">20</span>G</button>
+                <button class="shop-btn" id="btn-buy-agi-10" onclick="buyShopStat('agi',10)">×10 <span id="shop-agi-cost-10">200</span>G</button>
+              </div>
             </div>
             <div class="shop-row">
               <div class="shop-info">
                 <span class="shop-name">命中強化</span>
                 <span class="shop-desc">DEX+3（命中率+0.9%）</span>
               </div>
-              <button class="shop-btn" id="btn-buy-dex" onclick="buyShopStat('dex')"><span id="shop-dex-cost">15</span> G</button>
+              <div class="shop-btn-group">
+                <button class="shop-btn" id="btn-buy-dex" onclick="buyShopStat('dex',1)">×1 <span id="shop-dex-cost">15</span>G</button>
+                <button class="shop-btn" id="btn-buy-dex-10" onclick="buyShopStat('dex',10)">×10 <span id="shop-dex-cost-10">150</span>G</button>
+              </div>
             </div>
             <div class="shop-row">
               <div class="shop-info">
                 <span class="shop-name">幸運強化</span>
                 <span class="shop-desc">LUK+3（クリティカル率↑）</span>
               </div>
-              <button class="shop-btn" id="btn-buy-luk" onclick="buyShopStat('luk')"><span id="shop-luk-cost">25</span> G</button>
+              <div class="shop-btn-group">
+                <button class="shop-btn" id="btn-buy-luk" onclick="buyShopStat('luk',1)">×1 <span id="shop-luk-cost">25</span>G</button>
+                <button class="shop-btn" id="btn-buy-luk-10" onclick="buyShopStat('luk',10)">×10 <span id="shop-luk-cost-10">250</span>G</button>
+              </div>
             </div>
           </div>
         </div>
