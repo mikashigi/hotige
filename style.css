@@ -1,4 +1,53 @@
 /* =====================
+   フォント
+   ===================== */
+
+/* 数字 → Baloo 2 */
+@font-face {
+  font-family: 'GameFont';
+  src: url('fonts/Baloo2-Regular.ttf') format('truetype');
+  font-weight: 400;
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: 'GameFont';
+  src: url('fonts/Baloo2-Bold.ttf') format('truetype');
+  font-weight: 700;
+  unicode-range: U+0030-0039;
+}
+
+/* 英字 → Comfortaa */
+@font-face {
+  font-family: 'GameFont';
+  src: url('fonts/Comfortaa-Regular.ttf') format('truetype');
+  font-weight: 400;
+  unicode-range: U+0041-005A, U+0061-007A;
+}
+@font-face {
+  font-family: 'GameFont';
+  src: url('fonts/Comfortaa-Bold.ttf') format('truetype');
+  font-weight: 700;
+  unicode-range: U+0041-005A, U+0061-007A;
+}
+
+/* その他（日本語など）→ Zen Maru Gothic（フォールバック） */
+@font-face {
+  font-family: 'GameFont';
+  src: url('fonts/ZenMaruGothic-Regular.ttf') format('truetype');
+  font-weight: 400;
+}
+@font-face {
+  font-family: 'GameFont';
+  src: url('fonts/ZenMaruGothic-Medium.ttf') format('truetype');
+  font-weight: 500;
+}
+@font-face {
+  font-family: 'GameFont';
+  src: url('fonts/ZenMaruGothic-Bold.ttf') format('truetype');
+  font-weight: 700;
+}
+
+/* =====================
    リセット & 変数
    ===================== */
 * {
@@ -58,7 +107,7 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: sans-serif;
+  font-family: 'GameFont', sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -295,11 +344,13 @@ html, body {
    左カラム
    ===================== */
 #left-col {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
   overflow: hidden;
 }
+
 
 #enemy-area {
   background: var(--panel-bg);
@@ -622,6 +673,36 @@ html, body {
 }
 .tab-label { line-height: 1.2; }
 
+/* タブ通知バッジ */
+.tab-btn { position: relative; }
+
+.tab-badge {
+  display: none;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--panel-hd);
+}
+.tab-badge.show { display: block; }
+.tab-badge.success { background: #4caf50; }
+.tab-badge.warn    { background: #f57c00; }
+
+@keyframes tabFlashSuccess {
+  0%   { background: var(--panel-hd); color: var(--text-muted); }
+  20%  { background: #b8f0b0; color: #2a6a20; }
+  100% { background: var(--panel-hd); color: var(--text-muted); }
+}
+@keyframes tabFlashWarn {
+  0%   { background: var(--panel-hd); color: var(--text-muted); }
+  20%  { background: #ffe0b0; color: #b05000; }
+  100% { background: var(--panel-hd); color: var(--text-muted); }
+}
+.tab-btn.flash-success { animation: tabFlashSuccess 1.2s ease forwards; }
+.tab-btn.flash-warn    { animation: tabFlashWarn    1.2s ease forwards; }
+
 #panel-content {
   flex: 1;
   position: relative;
@@ -891,6 +972,7 @@ html, body {
 #log-system {
   padding: 8px 12px;
   font-size: 0.78rem;
+  font-weight: 500;
   display: flex;
   flex-direction: column;
   gap: 4px;

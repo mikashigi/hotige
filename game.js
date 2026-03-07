@@ -761,6 +761,7 @@ function completeOneRefine() {
   const newTier  = getItemTier(newCount);
   addSystemLog(`${recipe.name} 完成！ ${ITEM_MAP[outId]?.name ?? outId} ×${newCount}`);
   if (newTier > prevTier) addSystemLog(`★ ${ITEM_MAP[outId]?.name} Tier${newTier} 解放！`);
+  notifyRefineTab('success');
   invalidateStats();
   updateStatsDisplay();
   updateInventoryDisplay();
@@ -776,7 +777,12 @@ function completeOneRefine() {
     updateRefineDisplay();
     updateInventoryDisplay();
   } else {
-    if (next !== 0) addSystemLog("素材不足で精製が停止しました");
+    if (next !== 0) {
+      addSystemLog("素材不足で精製が停止しました");
+      notifyRefineTab('warn');
+    } else {
+      addSystemLog(`${recipe.name} の精製がすべて完了しました`);
+    }
     clearInterval(refineIntervalId);
     refineIntervalId = null;
     state.refine = null;
@@ -916,6 +922,27 @@ function switchTab(paneId) {
   document.querySelectorAll('#panel-content .tab-pane').forEach(pane => {
     pane.classList.toggle('active', pane.id === paneId);
   });
+  // 精製タブを開いたらバッジをクリア
+  if (paneId === 'pane-refine') clearRefineBadge();
+}
+
+function notifyRefineTab(type) { // type: 'success' | 'warn'
+  const btn   = document.querySelector('[data-target="pane-refine"]');
+  const badge = document.getElementById('refine-badge');
+  if (!btn || !badge) return;
+  // アクティブタブなら通知不要
+  if (btn.classList.contains('active')) return;
+  // バッジ表示
+  badge.className = `tab-badge show ${type}`;
+  // フラッシュアニメーション（重複リセット）
+  btn.classList.remove('flash-success', 'flash-warn');
+  void btn.offsetWidth;
+  btn.classList.add(type === 'success' ? 'flash-success' : 'flash-warn');
+}
+
+function clearRefineBadge() {
+  const badge = document.getElementById('refine-badge');
+  if (badge) badge.className = 'tab-badge';
 }
 
 function togglePanel(id) {} // 互換スタブ（タブ化により不要）
