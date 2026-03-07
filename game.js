@@ -203,6 +203,9 @@ function enemyTick(enemy) {
 
   if (state.playerHp <= 0) {
     stopEnemyAttack();
+    clearInterval(attackIntervalId);
+    attackIntervalId = null;
+    _lastInterval = -1;
     addLog("倒れた…マップ1からやり直し！");
     showDeathOverlay(() => {
       state.playerHp    = state.playerMaxHp;
@@ -230,6 +233,9 @@ function multiEnemyTick() {
 
   if (state.playerHp <= 0) {
     stopEnemyAttack();
+    clearInterval(attackIntervalId);
+    attackIntervalId = null;
+    _lastInterval = -1;
     addLog("倒れた…マップ1からやり直し！");
     showDeathOverlay(() => {
       state.playerHp    = state.playerMaxHp;
