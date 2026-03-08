@@ -952,6 +952,88 @@ html, body {
   color: var(--text-muted);
 }
 
+/* --- アイテムセクションヘッダー --- */
+.item-section-header {
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  padding: 6px 10px 3px;
+  border-bottom: 1px solid var(--border-light);
+  background: rgba(0,0,0,0.04);
+  margin-top: 2px;
+}
+.item-section-header:first-child { margin-top: 0; }
+
+/* --- 消費アイテムリスト --- */
+#consumable-list {
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.consumable-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-light);
+}
+.consumable-entry:last-child { border-bottom: none; padding-bottom: 0; }
+
+.consumable-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.consumable-name  { font-size: 0.82rem; font-weight: bold; color: #5a3e8a; }
+.consumable-count { font-size: 0.75rem; color: var(--text-muted); }
+.consumable-desc  { font-size: 0.7rem;  color: var(--text-muted); }
+
+.consumable-use-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  background: linear-gradient(135deg, #7c4dbd, #5a3e8a);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.consumable-use-btn:hover:not(:disabled) { opacity: 0.85; }
+.consumable-use-btn:disabled { opacity: 0.35; cursor: default; }
+
+.consumable-btn-group { display: flex; gap: 4px; flex-shrink: 0; }
+
+.consumable-cancel-btn {
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  background: linear-gradient(135deg, #7a4040, #5a2e2e);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.consumable-cancel-btn:hover { opacity: 0.85; }
+
+.consumable-entry.pending {
+  background: rgba(124, 77, 189, 0.07);
+  border-radius: 6px;
+}
+.consumable-pending {
+  font-size: 0.68rem;
+  color: #7c4dbd;
+  font-weight: bold;
+  background: rgba(124, 77, 189, 0.12);
+  border-radius: 4px;
+  padding: 1px 5px;
+  align-self: flex-start;
+}
+
 /* =====================
    ログ
    ===================== */
@@ -1279,6 +1361,8 @@ html, body {
 .save-icon-btn:hover { background: var(--btn-save-hv); }
 .save-icon-btn.reset { background: var(--btn-reset); }
 .save-icon-btn.reset:hover { background: var(--btn-reset-hv); }
+.save-icon-btn.home { background: #4a6fa5; color: #fff; }
+.save-icon-btn.home:hover { background: #3a5f95; }
 .save-icon-img {
   width: 22px;
   height: 22px;

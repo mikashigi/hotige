@@ -123,6 +123,9 @@ const state = {
   totalShopBuys:   0,
   rareKills:       0,
   mapsCleared:     0,
+  consumables:     {},
+  pendingBatch:    false, // 一括チケット使用中フラグ（次マップ到達で発動、死亡で返却）
+  batchFromTicket: false, // 一括討伐がチケット起動かどうか（死亡時に返却判定）
 };
 
 // --- 定数 ---
@@ -132,10 +135,11 @@ const CHAR_ICON = "img/icon/char.png"; // 例: "img/icon/char.png"
 
 // セーブアイコン: src に画像パスを設定すると画像表示、空なら alt のテキストを表示
 const SAVE_ICONS = [
-  { id: "save",   src: "", alt: "S", label: "セーブ",       action: "saveGame()" },
-  { id: "export", src: "", alt: "E", label: "エクスポート", action: "openExportModal()" },
-  { id: "import", src: "", alt: "I", label: "インポート",   action: "openImportModal()" },
-  { id: "reset",  src: "", alt: "R", label: "リセット",     action: "resetSave()",        cls: "reset" },
+  { id: "save",   src: "", alt: "S", label: "セーブ",           action: "saveGame()" },
+  { id: "export", src: "", alt: "E", label: "エクスポート",     action: "openExportModal()" },
+  { id: "import", src: "", alt: "I", label: "インポート",       action: "openImportModal()" },
+  { id: "home",   src: "", alt: "↩", label: "マップ1へ戻る",   action: "returnToFirstMap()", cls: "home" },
+  { id: "reset",  src: "", alt: "R", label: "リセット",         action: "resetSave()",        cls: "reset" },
 ];
 
 // パネルアイコン: src に画像パスを設定すると画像表示、空なら alt のテキストを表示
@@ -218,6 +222,13 @@ function enemyTick(enemy) {
     checkAchievements();
     addLog("倒れた…マップ1からやり直し！");
     showDeathOverlay(() => {
+      if (state.pendingBatch || state.batchFromTicket) {
+        state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + 1;
+        state.pendingBatch = false;
+        state.batchFromTicket = false;
+        addSystemLog("🎫 一括チケットを返却しました");
+        updateConsumableDisplay();
+      }
       state.playerHp    = state.playerMaxHp;
       state.mapIndex    = 0;
       state.stageInMap  = 0;
@@ -250,6 +261,13 @@ function multiEnemyTick() {
     checkAchievements();
     addLog("倒れた…マップ1からやり直し！");
     showDeathOverlay(() => {
+      if (state.pendingBatch || state.batchFromTicket) {
+        state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + 1;
+        state.pendingBatch = false;
+        state.batchFromTicket = false;
+        addSystemLog("🎫 一括チケットを返却しました");
+        updateConsumableDisplay();
+      }
       state.playerHp    = state.playerMaxHp;
       state.mapIndex    = 0;
       state.stageInMap  = 0;
@@ -362,6 +380,7 @@ function spawnMultiEnemies() {
 
   addLog(`★ 一括討伐モード！ ${state.multiEnemies.length}体が一斉出現！`);
   addSystemLog(`${MAP_DEFS[state.mapIndex].name}: ボス100回討伐達成！`);
+  updateConsumableDisplay();
 }
 
 function updateMultiStats() {
@@ -441,6 +460,7 @@ function checkMultiComplete() {
   attackIntervalId = null;
   const hadFinal = state.multiEnemies.some(e => e.isFinal && e.isBoss);
   state.multiEnemies = null;
+  state.batchFromTicket = false;
   _lastInterval = -1; // 通常速度に戻すため強制リセット
   elEnemyArea.classList.remove("multi-mode");
   elMultiGrid.innerHTML = "";
@@ -451,6 +471,7 @@ function checkMultiComplete() {
   state.mapsCleared++;
   addSystemLog(`★ マップ一括クリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
   checkAchievements();
+  updateConsumableDisplay();
   showMapClearOverlay(MAP_DEFS[state.mapIndex].name);
 }
 
@@ -531,8 +552,15 @@ function showMapClearOverlay(newMapName) {
 function spawnEnemy() {
   if (state.cleared) return;
 
-  // stageInMap=0 かつ一括モード対象マップなら全員召喚
-  if (state.stageInMap === 0 && isMultiMode(state.mapIndex)) {
+  // stageInMap=0 かつ一括モード対象マップ or チケット発動中なら全員召喚
+  if (state.stageInMap === 0 && (isMultiMode(state.mapIndex) || state.pendingBatch)) {
+    if (state.pendingBatch) {
+      state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) - 1;
+      state.pendingBatch = false;
+      state.batchFromTicket = true;
+      addSystemLog("🎫 一括チケット発動！一括討伐モード開始！");
+      updateConsumableDisplay();
+    }
     spawnMultiEnemies();
     return;
   }
@@ -565,6 +593,7 @@ function spawnEnemy() {
 
   clearInterval(enemyAttackIntervalId);
   enemyAttackIntervalId = setInterval(() => enemyTick(enemy), enemy.atkInterval);
+  updateConsumableDisplay();
 }
 
 function updateHpDisplay() {
@@ -609,6 +638,40 @@ function flashEnemyHit() {
   target.addEventListener("animationend", () => target.classList.remove("enemy-hit"), { once: true });
 }
 
+// --- 単体敵討伐の共通処理（tick / 消費アイテム 共用）---
+function _finishEnemyKill() {
+  stopEnemyAttack();
+  const defeatedEnemy = state.currentEnemy;
+  const earned = Math.floor(defeatedEnemy.gold * (0.75 + Math.random() * 0.5));
+  state.gold += earned;
+  state.totalGoldEarned += earned;
+  if (defeatedEnemy.isRare) state.rareKills++;
+  addLog(`${defeatedEnemy.name} を倒した！ +${fmt(earned)}G`);
+  playDefeatSound();
+  updateShopDisplay();
+  rollDrops(defeatedEnemy);
+  recordKill(state.mapIndex, defeatedEnemy.name);
+  checkAchievements();
+
+  if (defeatedEnemy.isFinal && defeatedEnemy.isBoss) { gameClear(); return; }
+
+  state.stageInMap++;
+  if (state.stageInMap >= 10) {
+    state.stageInMap = 0;
+    state.mapIndex++;
+    if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
+    state.mapsCleared++;
+    addSystemLog(`★ マップクリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
+    checkAchievements();
+    clearInterval(attackIntervalId);
+    attackIntervalId = null;
+    _lastInterval = -1;
+    showMapClearOverlay(MAP_DEFS[state.mapIndex].name);
+    return;
+  }
+  spawnEnemy();
+}
+
 // --- プレイヤー攻撃 ---
 function tick() {
   const s = computePlayerStats();
@@ -644,52 +707,53 @@ function tick() {
   addLog(`攻撃！ ${dmg} ダメージ（残HP: ${Math.max(0, state.enemyHp)}）${suffix}`);
   updateHpDisplay();
 
-  if (state.enemyHp <= 0) {
-    stopEnemyAttack();
-    const defeatedEnemy = state.currentEnemy;
-    const earned = Math.floor(defeatedEnemy.gold * (0.75 + Math.random() * 0.5));
-    state.gold += earned;
-    state.totalGoldEarned += earned;
-    if (defeatedEnemy.isRare) state.rareKills++;
-    addLog(`${defeatedEnemy.name} を倒した！ +${fmt(earned)}G`);
-    playDefeatSound();
-    updateShopDisplay();
-    rollDrops(defeatedEnemy);
-    recordKill(state.mapIndex, defeatedEnemy.name);
-    checkAchievements();
-
-    if (defeatedEnemy.isFinal && defeatedEnemy.isBoss) { gameClear(); return; }
-
-    state.stageInMap++;
-    if (state.stageInMap >= 10) {
-      state.stageInMap = 0;
-      state.mapIndex++;
-      if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
-      state.mapsCleared++;
-      addSystemLog(`★ マップクリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
-      checkAchievements();
-      clearInterval(attackIntervalId);
-      attackIntervalId = null;
-      _lastInterval = -1;
-      showMapClearOverlay(MAP_DEFS[state.mapIndex].name);
-      return;
-    }
-    spawnEnemy();
-  }
+  if (state.enemyHp <= 0) _finishEnemyKill();
 }
 
-// --- 一括討伐モードのプレイヤー攻撃（全員同時ダメージ）---
+// --- 一括討伐モードのプレイヤー攻撃 ---
 function tickMulti(s) {
   if (!state.multiEnemies) return;
   const idx = state.multiCurrentIdx ?? 0;
   const e   = state.multiEnemies[idx];
   if (!e || e.currentHp <= 0) return;
 
-  // 一括討伐：必中・一撃必殺
-  e.currentHp = 0;
+  if (e.isBoss) {
+    // ボス：通常の攻撃判定（命中・ダメージ・クリティカル）
+    const rand = Math.random();
+    const effectiveHit = Math.max(0, s.hitRate - (e.evasion || 0));
+    if (rand > effectiveHit) {
+      if ((e.evasion || 0) > 0 && rand <= s.hitRate) {
+        addLog(`${e.name} はかわした！`);
+        showDamageNumber("EVADE", "miss");
+      } else {
+        addLog("ミス！");
+        showDamageNumber("MISS", "miss");
+      }
+      return;
+    }
+    let dmg = s.totalAtk;
+    let dmgType = null;
+    let suffix = "";
+    if (Math.random() < Math.max(0, s.critChance - (e.critRes || 0))) {
+      dmg = Math.floor(dmg * 1.5);
+      dmgType = "crit";
+      suffix = " ★クリティカル！";
+    }
+    e.currentHp = Math.max(0, e.currentHp - dmg);
+    showDamageNumber(dmg, dmgType);
+    flashEnemyHit();
+    addLog(`攻撃！ ${dmg} ダメージ（残HP: ${e.currentHp}）${suffix}`);
+    updateMultiGrid();
+    if (e.currentHp > 0) return;
+  } else {
+    // 通常敵：必中・一撃必殺
+    e.currentHp = 0;
+    showDamageNumber("KILL", "crit");
+    flashEnemyHit();
+  }
+
+  // 討伐確定
   e._counted = true;
-  showDamageNumber("KILL", "crit");
-  flashEnemyHit();
   const earned = Math.floor(e.gold * (0.75 + Math.random() * 0.5));
   state.gold += earned;
   state.totalGoldEarned += earned;
@@ -1312,25 +1376,165 @@ function updateInventoryDisplay() {
 }
 
 // --- ドロップ ---
+function _grantItem(itemId) {
+  const item = ITEM_MAP[itemId];
+  if (!item) return;
+  const prevObtained = state.itemsObtained[item.id] || 0;
+  state.itemsObtained[item.id] = prevObtained + 1;
+  state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
+  const newObtained = state.itemsObtained[item.id];
+  const prevTier = getItemTier(prevObtained);
+  const newTier  = getItemTier(newObtained);
+  addSystemLog(`${item.name} を入手！ (累計×${newObtained})`);
+  if (newTier > prevTier) addSystemLog(`★ ${item.name} Tier${newTier} 解放！ボーナス加算！`);
+  invalidateStats();
+  updateStatsDisplay();
+  updateInventoryDisplay();
+  updateRefineDisplay();
+}
+
 function rollDrops(enemy) {
   enemy.drops.forEach(drop => {
-    if (Math.random() < drop.rate) {
-      const item = ITEM_MAP[drop.itemId];
-      if (!item) return;
-      const prevObtained = state.itemsObtained[item.id] || 0;
-      state.itemsObtained[item.id] = prevObtained + 1;
-      state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
-      const newObtained = state.itemsObtained[item.id];
-      const prevTier = getItemTier(prevObtained);
-      const newTier  = getItemTier(newObtained);
-      addSystemLog(`${item.name} を入手！ (累計×${newObtained})`);
-      if (newTier > prevTier) addSystemLog(`★ ${item.name} Tier${newTier} 解放！ボーナス加算！`);
-      invalidateStats();
-      updateStatsDisplay();
-      updateInventoryDisplay();
-      updateRefineDisplay();
-    }
+    if (Math.random() < drop.rate) _grantItem(drop.itemId);
   });
+
+  // 一括チケット：全モンスター共有低確率ドロップ
+  const ticketRate = enemy.isBoss ? 0.08 : enemy.isRare ? 0.05 : 0.02;
+  if (Math.random() < ticketRate) _grantConsumable("batch_ticket");
+
+  // 消費アイテム共有ドロップ
+  const bombRate = enemy.isBoss ? 0.12 : enemy.isRare ? 0.07 : 0.03;
+  if (Math.random() < bombRate) _grantConsumable("bomb_herb");
+}
+
+// --- 消費アイテム ---
+function _grantConsumable(id) {
+  const def = CONSUMABLE_MAP[id];
+  if (!def) return;
+  state.consumables[id] = (state.consumables[id] || 0) + 1;
+  addSystemLog(`${def.icon} ${def.name} を入手！ (×${state.consumables[id]})`);
+  updateConsumableDisplay();
+}
+
+function useConsumable(id) {
+  if ((state.consumables[id] || 0) <= 0 || state.cleared) return;
+  const def = CONSUMABLE_MAP[id];
+  if (!def) return;
+
+  if (def.effect.type === "batch_mode") {
+    if (state.pendingBatch || state.multiEnemies !== null) return;
+    state.consumables[id]--;
+    state.pendingBatch = true;
+    addLog(`${def.icon} ${def.name} 使用！ 次のマップで一括討伐モードが発動します`);
+    updateConsumableDisplay();
+    return;
+  }
+
+  if (def.effect.type === "damage") {
+    const dmg = Math.floor(computePlayerStats().totalAtk * def.effect.damageMult);
+
+    if (state.multiEnemies !== null) {
+      const idx = state.multiCurrentIdx ?? 0;
+      const e = state.multiEnemies[idx];
+      if (!e || e.currentHp <= 0) return;
+      e.currentHp = Math.max(0, e.currentHp - dmg);
+      showDamageNumber(fmt(dmg), "crit");
+      flashEnemyHit();
+      addLog(`${def.icon} ${def.name} 使用！ ${fmt(dmg)} ダメージ！`);
+      state.consumables[id]--;
+      updateConsumableDisplay();
+      if (e.currentHp <= 0) {
+        e._counted = true;
+        const earned = Math.floor(e.gold * (0.75 + Math.random() * 0.5));
+        state.gold += earned;
+        state.totalGoldEarned += earned;
+        if (e.isRare) state.rareKills++;
+        rollDrops(e);
+        recordKill(state.mapIndex, e.name);
+        checkAchievements();
+        addLog(`${e.name} 撃破！ +${fmt(earned)}G`);
+        playDefeatSound();
+        updateShopDisplay();
+        const deadCard = document.getElementById(`multi-card-${idx}`);
+        if (deadCard) { deadCard.classList.add("dead"); deadCard.classList.remove("current"); }
+        const mapSnap = state.mapIndex;
+        setTimeout(() => advanceToNext(mapSnap), 180);
+      } else {
+        updateMultiGrid();
+        updateMultiStats();
+      }
+    } else if (state.currentEnemy && state.enemyHp > 0) {
+      state.enemyHp -= dmg;
+      showDamageNumber(fmt(dmg), "crit");
+      flashEnemyHit();
+      addLog(`${def.icon} ${def.name} 使用！ ${fmt(dmg)} ダメージ！`);
+      updateHpDisplay();
+      state.consumables[id]--;
+      updateConsumableDisplay();
+      if (state.enemyHp <= 0) _finishEnemyKill();
+    }
+  }
+}
+
+function cancelBatchTicket() {
+  if (!state.pendingBatch) return;
+  state.pendingBatch = false;
+  state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + 1;
+  addLog("🎫 一括チケットの予約を解除しました");
+  updateConsumableDisplay();
+}
+
+function updateConsumableDisplay() {
+  const el = document.getElementById('consumable-list');
+  if (!el) return;
+  const hasEnemy = state.multiEnemies !== null
+    ? state.multiEnemies.some(e => e.currentHp > 0)
+    : (state.currentEnemy != null && state.enemyHp > 0);
+  const entries = CONSUMABLES
+    .filter(c => {
+      const count = state.consumables[c.id] || 0;
+      if (count > 0) return true;
+      // batch_ticket: 発動待ち中は0個でも表示
+      return c.effect.type === "batch_mode" && state.pendingBatch;
+    })
+    .map(c => {
+      const count = state.consumables[c.id] || 0;
+      const isPending = c.effect.type === "batch_mode" && state.pendingBatch;
+      let btnLabel = "使う";
+      let disabled = "";
+      const inMulti = state.multiEnemies !== null;
+      if (isPending) {
+        btnLabel = "発動中";
+        disabled = "disabled";
+      } else if (state.cleared) {
+        disabled = "disabled";
+      } else if (c.effect.type === "damage" && (inMulti || !hasEnemy)) {
+        disabled = "disabled";
+      } else if (c.effect.type === "batch_mode" && inMulti) {
+        disabled = "disabled";
+      }
+      const pendingBadge = isPending
+        ? '<span class="consumable-pending">次マップで発動</span>'
+        : '';
+      const cancelBtn = isPending
+        ? `<button class="consumable-cancel-btn" onclick="cancelBatchTicket()">解除</button>`
+        : '';
+      return `<div class="consumable-entry${isPending ? " pending" : ""}">
+        <div class="consumable-info">
+          <span class="consumable-name">${c.icon} ${c.name}</span>
+          <span class="consumable-count">×${count}</span>
+          ${pendingBadge}
+          <span class="consumable-desc">${c.desc}</span>
+        </div>
+        <div class="consumable-btn-group">
+          <button class="consumable-use-btn" onclick="useConsumable('${c.id}')" ${disabled}>${btnLabel}</button>
+          ${cancelBtn}
+        </div>
+      </div>`;
+    });
+  el.innerHTML = entries.length
+    ? entries.join('')
+    : '<span class="empty-msg">消費アイテムなし</span>';
 }
 
 function playDefeatSound() {
@@ -1392,6 +1596,9 @@ function saveData() {
     totalShopBuys:   state.totalShopBuys,
     rareKills:       state.rareKills,
     mapsCleared:     state.mapsCleared,
+    consumables:     state.consumables,
+    pendingBatch:    state.pendingBatch,
+    batchFromTicket: state.batchFromTicket,
     soundVolume,
     soundMuted,
   }));
@@ -1433,6 +1640,15 @@ function loadGame() {
   state.totalShopBuys   = data.totalShopBuys   ?? 0;
   state.rareKills       = data.rareKills       ?? 0;
   state.mapsCleared     = data.mapsCleared     ?? 0;
+  state.consumables     = data.consumables     || {};
+  state.pendingBatch    = data.pendingBatch    || false;
+  state.batchFromTicket = data.batchFromTicket || false;
+  // 旧セーブの batch_ticket がステータスアイテムとして保存されていた場合の移行
+  if (state.inventory['batch_ticket']) {
+    state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + state.inventory['batch_ticket'];
+    delete state.inventory['batch_ticket'];
+    delete state.itemsObtained['batch_ticket'];
+  }
   // 旧セーブの shopLevels に str/int がない場合の補完
   state.shopLevels.str  = state.shopLevels.str ?? 0;
   state.shopLevels.int  = state.shopLevels.int ?? 0;
@@ -1446,6 +1662,29 @@ function loadGame() {
     refineIntervalId = setInterval(refineTick, REFINE_TICK_MS);
   }
   return true;
+}
+
+function returnToFirstMap() {
+  if (state.cleared) return;
+  if (state.mapIndex === 0 && state.stageInMap === 0 && !state.multiEnemies) return;
+  stopEnemyAttack();
+  clearInterval(attackIntervalId);
+  attackIntervalId = null;
+  _lastInterval = -1;
+  if (state.batchFromTicket) {
+    state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + 1;
+    state.batchFromTicket = false;
+    addSystemLog("🎫 一括チケットを返却しました");
+    updateConsumableDisplay();
+  }
+  state.mapIndex     = 0;
+  state.stageInMap   = 0;
+  state.multiEnemies = null;
+  elEnemyArea.classList.remove("multi-mode");
+  elMultiGrid.innerHTML = "";
+  addSystemLog("マップ1へ撤退");
+  spawnEnemy();
+  updateStatsDisplay();
 }
 
 function resetSave() {
@@ -1689,6 +1928,7 @@ function init() {
 
   updateStatsDisplay();
   updateInventoryDisplay();
+  updateConsumableDisplay();
   updateShopDisplay();
   updateRefineDisplay();
 
