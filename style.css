@@ -1223,9 +1223,14 @@ html, body {
   text-align: center;
 }
 /* ×1 ボタン */
-.shop-btn-group .shop-btn:first-child { min-width: 76px; }
+.shop-btn-group .shop-btn:first-child { min-width: 60px; }
 /* ×10 ボタン */
-.shop-btn-group .shop-btn:last-child  { min-width: 96px; }
+.shop-btn-group .shop-btn.shop-btn-10 { min-width: 80px; }
+.shop-btn-qty {
+  font-size: 0.68rem;
+  opacity: 0.7;
+  margin-right: 3px;
+}
 /* 単独ボタン（HP回復など）*/
 .shop-btn-group .shop-btn:only-child,
 .shop-row > .shop-btn { min-width: unset; }
