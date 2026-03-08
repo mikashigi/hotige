@@ -5,9 +5,9 @@
 const CONSUMABLES = [
   {
     id:     "batch_ticket",
-    name:   "一括チケット",
+    name:   "連闘チケット",
     icon:   "🎫",
-    desc:   "次のマップで一括討伐モードが発動する（死亡時は返却）",
+    desc:   "次のマップで連闘モードが発動する（死亡時は返却）",
     effect: { type: "batch_mode" },
   },
   {

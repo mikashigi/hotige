@@ -241,13 +241,13 @@ function enemyTick(enemy) {
     checkAchievements();
     addLog("倒れた…マップ1からやり直し！");
     showDeathOverlay(() => {
-      if (state.pendingBatch || state.batchFromTicket) {
+      if (state.batchFromTicket) {
         state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + 1;
-        state.pendingBatch = false;
         state.batchFromTicket = false;
-        addSystemLog("🎫 一括チケットを返却しました");
+        addSystemLog("🎫 連闘チケットを返却しました");
         updateConsumableDisplay();
       }
+      state.pendingBatch = false;
       state.playerHp    = state.playerMaxHp;
       state.mapIndex    = 0;
       state.stageInMap  = 0;
@@ -281,13 +281,13 @@ function multiEnemyTick() {
     checkAchievements();
     addLog("倒れた…マップ1からやり直し！");
     showDeathOverlay(() => {
-      if (state.pendingBatch || state.batchFromTicket) {
+      if (state.batchFromTicket) {
         state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + 1;
-        state.pendingBatch = false;
         state.batchFromTicket = false;
-        addSystemLog("🎫 一括チケットを返却しました");
+        addSystemLog("🎫 連闘チケットを返却しました");
         updateConsumableDisplay();
       }
+      state.pendingBatch = false;
       state.playerHp    = state.playerMaxHp;
       state.mapIndex    = 0;
       state.stageInMap  = 0;
@@ -438,7 +438,7 @@ function spawnMultiEnemies() {
   clearInterval(enemyAttackIntervalId);
   enemyAttackIntervalId = setInterval(multiEnemyTick, 2000);
 
-  addLog(`★ 一括討伐モード！ ${state.multiEnemies.length}体が一斉出現！`);
+  addLog(`★ 連闘モード！ ${state.multiEnemies.length}体が一斉出現！`);
   addSystemLog(`${MAP_DEFS[state.mapIndex].name}: ボス100回討伐達成！`);
   updateConsumableDisplay();
   // 攻撃速度を一括モード（÷3）に確実にリセット
@@ -622,7 +622,7 @@ function spawnEnemy() {
       state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) - 1;
       state.pendingBatch = false;
       state.batchFromTicket = true;
-      addSystemLog("🎫 一括チケット発動！一括討伐モード開始！");
+      addSystemLog("🎫 連闘チケット発動！連闘モード開始！");
       updateConsumableDisplay();
     }
     spawnMultiEnemies();
@@ -854,7 +854,7 @@ function recordKill(mapIndex, enemyName) {
   // ボス100回で一括モード解放通知
   const bossName = MAP_DEFS[mapIndex].boss.name;
   if (enemyName === bossName && cur === 100) {
-    addSystemLog(`★★ ${MAP_DEFS[mapIndex].name} ボス100体討伐！一括討伐モード解放！`);
+    addSystemLog(`★★ ${MAP_DEFS[mapIndex].name} ボス100体討伐！連闘モード解放！`);
   }
 
   // マップ全員999達成チェック
@@ -1609,9 +1609,9 @@ function useConsumable(id) {
 
   if (def.effect.type === "batch_mode") {
     if (state.pendingBatch || state.multiEnemies !== null) return;
-    state.consumables[id]--;
+    // 消費は発動時（spawnEnemy）に行う。ここでは予約のみ。
     state.pendingBatch = true;
-    addLog(`${def.icon} ${def.name} 使用！ 次のマップで一括討伐モードが発動します`);
+    addLog(`${def.icon} ${def.name} 使用！ 次のマップで連闘モードが発動します`);
     updateConsumableDisplay();
     return;
   }
@@ -1706,8 +1706,7 @@ function useConsumable(id) {
 function cancelBatchTicket() {
   if (!state.pendingBatch) return;
   state.pendingBatch = false;
-  state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + 1;
-  addLog("🎫 一括チケットの予約を解除しました");
+  addLog("🎫 連闘チケットの予約を解除しました");
   updateConsumableDisplay();
 }
 
@@ -1973,7 +1972,7 @@ function returnToFirstMap() {
   if (state.batchFromTicket) {
     state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + 1;
     state.batchFromTicket = false;
-    addSystemLog("🎫 一括チケットを返却しました");
+    addSystemLog("🎫 連闘チケットを返却しました");
     updateConsumableDisplay();
   }
   state.mapIndex     = 0;
@@ -2132,8 +2131,8 @@ function renderMonsterBook() {
     const multiTag = !mapEverVisited
       ? ""
       : multiUnlocked
-        ? `<span class="multi-badge">一括×${bossKills}</span>`
-        : `<span class="multi-badge locked-multi">一括まで${100 - bossKills}回</span>`;
+        ? `<span class="multi-badge">連闘×${bossKills}</span>`
+        : `<span class="multi-badge locked-multi">連闘まで${100 - bossKills}回</span>`;
 
     const allMax  = allDefs.every(e =>
       (state.monsterKills[`${mi}:${e.name}`] || 0) >= 999
@@ -2418,20 +2417,29 @@ function _luckyFormulaHtml() {
 }
 
 function openLucky() {
-  _luckyOpen     = true;
-  _luckyPhase    = 'idle';
-  _luckyBase     = 0;
-  _luckyMults    = [];
-  _luckySpinning = false;
+  _luckyOpen = true;
+  // 進行中のセッションがあればそのまま再表示、なければ新規
+  if (!_luckyPhase || _luckyPhase === 'idle') {
+    _luckyPhase    = 'idle';
+    _luckyBase     = 0;
+    _luckyMults    = [];
+    _luckySpinning = false;
+  }
   _renderLucky();
   document.getElementById('modal-lucky').style.display = 'flex';
 }
 
 function closeLucky() {
   if (_luckySpinning) return;
-  _luckyOpen  = false;
-  _luckyPhase = null;
-  document.querySelector('.lucky-modal-box')?.classList.remove('lk-zone-active');
+  _luckyOpen = false;
+  // done なら状態をリセット（クレーム済み or 受け取らず閉じた場合）
+  if (_luckyPhase === 'done') {
+    _luckyPhase = null;
+    _luckyBase  = 0;
+    _luckyMults = [];
+  }
+  // 進行中（base/mult/zone）は状態を保持したまま非表示
+  document.querySelector('.lucky-modal-box')?.classList.remove('lk-zone-active', 'lk-mega-active');
   document.getElementById('modal-lucky').style.display = 'none';
 }
 
