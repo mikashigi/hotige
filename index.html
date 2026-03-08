@@ -36,11 +36,18 @@
       <div id="book-btns">
         <button class="book-btn" onclick="openBook('item')">図鑑</button>
         <button class="book-btn" onclick="openAchievements()">実績</button>
+        <button class="book-btn" onclick="openLucky()">運試し</button>
       </div>
       <div id="stage-display">
-        <div id="map-name-row">
-          <img id="map-icon" src="" alt="" style="display:none">
-          <span id="map-name">草原</span>
+        <div id="map-carousel">
+          <div id="mc-track">
+            <div class="mc-side" id="mc-prev"></div>
+            <div id="mc-cur">
+              <img id="map-icon" src="" alt="" style="display:none">
+              <span id="map-name">草原</span>
+            </div>
+            <div class="mc-side" id="mc-next"></div>
+          </div>
         </div>
         <div id="stage-grid"><!-- JS で生成 --></div>
       </div>
@@ -271,6 +278,17 @@
         <button class="modal-close" onclick="closeBook()">✕</button>
       </div>
       <div class="modal-body" id="book-content"></div>
+    </div>
+  </div>
+
+  <!-- 運試し屋モーダル -->
+  <div id="modal-lucky" class="modal-overlay" onclick="closeLucky()">
+    <div class="modal-box lucky-modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span>🎰 運試し屋</span>
+        <button class="modal-close" onclick="closeLucky()">✕</button>
+      </div>
+      <div class="modal-body" id="lucky-body"></div>
     </div>
   </div>
 

@@ -183,6 +183,11 @@ const elHealCost    = document.getElementById("shop-heal-cost");
 const elEnemyArea      = document.getElementById("enemy-area");
 const elStunTimerText  = document.getElementById("stun-timer-text");
 const elMultiGrid      = document.getElementById("multi-enemy-grid");
+const elMcTrack        = document.getElementById("mc-track");
+const elMcPrev         = document.getElementById("mc-prev");
+const elMcNext         = document.getElementById("mc-next");
+
+let _mcSlideDir = 0; // 1: 左からスライドイン(次へ), -1: 右からスライドイン(前へ)
 
 // --- ログ ---
 function addLog(msg) {
@@ -315,6 +320,43 @@ function initStageGrid() {
   }
 }
 
+// --- マップカルーセル更新 ---
+const MC_CONTAINER_W = 220; // #map-carousel の幅
+const MC_SIDE_W = 75;       // .mc-side の幅
+const MC_CUR_W  = 110;      // #mc-cur の幅
+// trackをこの位置にするとmc-curがコンテナ中央に来る
+// mc-curの左端はtrack内でMC_SIDE_W=75px位置、中心は75+55=130px
+// コンテナ中心は110px → translateX = 110 - 130 = -20px
+const MC_OFFSET = (MC_CONTAINER_W / 2) - MC_SIDE_W - (MC_CUR_W / 2); // = -20
+
+function updateMapCarousel() {
+  const dir = _mcSlideDir;
+  _mcSlideDir = 0;
+
+  const prev = MAP_DEFS[state.mapIndex - 1];
+  const next = MAP_DEFS[state.mapIndex + 1];
+  elMcPrev.textContent = prev ? prev.name : "";
+  elMcNext.textContent = next ? next.name : "";
+
+  if (dir !== 0) {
+    // 開始位置: dir=1なら右側ずれ(次マップが右から来る), dir=-1なら左側ずれ
+    elMcTrack.classList.remove("mc-slide");
+    // dir=1: 右から来る → トラックを右(+)にずらして左へスライドイン
+    // dir=-1: 左から来る → トラックを左(-)にずらして右へスライドイン
+    elMcTrack.style.transform = `translateX(${MC_OFFSET + dir * MC_CUR_W}px)`;
+    // reflow 強制
+    void elMcTrack.offsetWidth;
+    elMcTrack.classList.add("mc-slide");
+    elMcTrack.style.transform = `translateX(${MC_OFFSET}px)`;
+    elMcTrack.addEventListener("transitionend", () => {
+      elMcTrack.classList.remove("mc-slide");
+    }, { once: true });
+  } else {
+    elMcTrack.classList.remove("mc-slide");
+    elMcTrack.style.transform = `translateX(${MC_OFFSET}px)`;
+  }
+}
+
 // --- ステージ表示更新 ---
 function updateStageDisplay() {
   const map = MAP_DEFS[state.mapIndex];
@@ -362,6 +404,8 @@ function updateStageDisplay() {
     const charEl = cell.querySelector(".stage-char");
     if (charEl) charEl.style.visibility = (i === state.stageInMap) ? "visible" : "hidden";
   });
+
+  updateMapCarousel();
 }
 
 // --- 一括討伐モード開始 ---
@@ -556,6 +600,7 @@ function showMapClearOverlay(newMapName) {
     setTimeout(() => {
       overlay.style.display = 'none';
       overlay.classList.remove('active', 'exit');
+      _mcSlideDir = 1;
       spawnEnemy();
       updateStatsDisplay();
     }, 210);
@@ -832,6 +877,8 @@ function gameClear() {
   attackIntervalId = null;
   _lastInterval = -1;
   elMapName.textContent = "★ GAME CLEAR ★";
+  elMcPrev.textContent = "";
+  elMcNext.textContent = "";
   elStageGrid.querySelectorAll(".stage-cell").forEach(c => {
     c.classList.remove("done", "current", "multi-active");
     c.classList.add("done");
@@ -1612,8 +1659,10 @@ function updateConsumableDisplay() {
     : '<span class="empty-msg">消費アイテムなし</span>';
 }
 
+let _luckyOpen = false; // 運試し屋中はステージ効果音を止める
+
 function playBombSound() {
-  if (soundMuted || audioCtx.state !== 'running') return;
+  if (soundMuted || audioCtx.state !== 'running' || _luckyOpen) return;
   const now = audioCtx.currentTime;
 
   // ノイズバースト（爆発の「バン」）
@@ -1677,7 +1726,7 @@ function showExplosionEffect() {
 }
 
 function playDefeatSound() {
-  if (soundMuted || audioCtx.state !== 'running') return;
+  if (soundMuted || audioCtx.state !== 'running' || _luckyOpen) return;
   // ペンタトニックスケール（何を組み合わせても不協和にならない）
   const PENTA = [261.63, 293.66, 329.63, 392.00, 440.00,
                  523.25, 587.33, 659.25, 783.99, 880.00,
@@ -2047,6 +2096,437 @@ function renderMonsterBook() {
   }).join("");
 
   document.getElementById("book-content").innerHTML = sections;
+}
+
+// ============================================================
+// 🎰 運試し屋  ── パラメータ設定
+// ============================================================
+const LUCKY_CONFIG = {
+  cost:          10000,  // 1回のコスト (G)
+
+  // ── 大当たり継続確率 ───────────────────────────────────────
+  //   高いほど長続きして期待値UP・低いほどすぐ終わる
+  jackpotChance: 0.85,   // ← ここを変える (0.0〜1.0)
+
+  // ── 超大当たり（特化ゾーン突入）確率 ──────────────────────
+  //   jackpotChance の中に含まれる確率。必ず jackpotChance 未満にすること
+  superChance:   0.08,   // ← ここを変える (0.0〜jackpotChance)
+
+  // ── 特化ゾーンのループ確率 ────────────────────────────────
+  zoneLoopChance: 0.50,  // ← ここを変える (0.0〜1.0)
+
+  // ── 初期G 範囲 ────────────────────────────────────────────
+  baseMin:  50,           // ← 最小値
+  baseMax: 500,           // ← 最大値   平均 = (min+max)/2 = 275G
+
+  // ── 倍率テーブル: [倍率, 相対重み] ────────────────────────
+  //   重みが大きいほど出やすい。合計値は自動計算するので自由に増減OK
+  multTable: [
+    [ 2,  2],  // 出にくい
+    [ 3,  3],
+    [ 4,  4],
+    [ 5,  5],
+    [ 6,  5],
+    [ 7,  5],
+    [ 8,  4],
+    [ 9,  3],
+    [10,  4],  // 高倍率もそこそこ出る
+  ],
+  // 合計重み35 → 期待倍率 ≈ 6.2×
+
+  // ── 期待値の目安 ──────────────────────────────────────────
+  // 公式: E[報酬] = E[初期G] × { (1-p) + E[倍率] × p/(1-p) }
+  //      ≈ 275 × { 0.15 + 6.2 × 0.85/0.15 }
+  //      ≈ 275 × 35.2  ≈  9,700G / 回（特化ゾーン込みで約10,000G）
+  // 平均大当たり回数: p/(1-p) = 0.85/0.15 ≈ 5.7 回/ゲーム
+  // ─────────────────────────────────────────────────────────
+};
+
+// ── 運試し屋 効果音 ──────────────────────────────────────────
+function _playLuckySfx(type) {
+  if (soundMuted || audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+  const tone = (freq, t, dur, vol = 0.16, wave = 'sine') => {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(masterGain);
+    o.type = wave;
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.onended = () => { o.disconnect(); g.disconnect(); };
+    o.start(t); o.stop(t + dur + 0.01);
+  };
+  switch (type) {
+    case 'base':
+      tone(523, now, 0.12); tone(659, now + 0.09, 0.2); break;
+    case 'jackpot':
+      [523, 659, 784].forEach((f, i) => tone(f, now + i * 0.08, 0.24)); break;
+    case 'super':
+      [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, now + i * 0.065, 0.3, 0.22)); break;
+    case 'zone_win':
+      tone(1047, now, 0.1, 0.13); tone(1319, now + 0.07, 0.18, 0.11); break;
+    case 'zone_exit':
+      tone(659, now, 0.18, 0.13); tone(440, now + 0.13, 0.25, 0.11); break;
+    case 'claim':
+      [523, 659, 784, 1047, 1319, 1568].forEach((f, i) =>
+        tone(f, now + i * 0.055, 0.38, i < 5 ? 0.16 : 0.26)); break;
+    case 'miss': {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(masterGain);
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(300, now);
+      o.frequency.exponentialRampToValueAtTime(130, now + 0.4);
+      g.gain.setValueAtTime(0.12, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      o.onended = () => { o.disconnect(); g.disconnect(); };
+      o.start(now); o.stop(now + 0.42);
+      break;
+    }
+  }
+}
+
+// ── 運試し屋 パーティクルバースト ────────────────────────────
+function _luckyParticleBurst(type) {
+  const modal = document.querySelector('.lucky-modal-box');
+  if (!modal) return;
+  const rect  = modal.getBoundingClientRect();
+  const cx    = rect.left + rect.width / 2;
+  const cy    = rect.top  + rect.height * 0.42;
+  const count   = type === 'super' ? 24 : type === 'claim' ? 30 : 14;
+  const symbols = type === 'claim' ? ['G','G','★','✦'] : ['★','✦','◆','●'];
+  const colors  = type === 'super'
+    ? ['#ffd700','#ffaa00','#ffee44','#ff8800']
+    : type === 'claim'
+    ? ['#f0c030','#44dd88','#60a0ff','#ffaa40']
+    : ['#ffcc40','#ff90c0','#80d0ff','#a0e080'];
+
+  for (let i = 0; i < count; i++) {
+    const el    = document.createElement('span');
+    el.className = 'lk-particle';
+    el.textContent = symbols[i % symbols.length];
+    const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.8;
+    const speed = 70 + Math.random() * (type === 'super' ? 130 : 80);
+    const dx    = Math.cos(angle) * speed;
+    const dy    = Math.sin(angle) * speed * 0.55 - (30 + Math.random() * 50);
+    const dur   = 600 + Math.random() * 400;
+    el.style.left  = cx + 'px';
+    el.style.top   = cy + 'px';
+    el.style.color = colors[i % colors.length];
+    el.style.fontSize = (0.72 + Math.random() * 0.7) + 'rem';
+    el.style.animationDuration = dur + 'ms';
+    el.style.animationDelay   = Math.random() * 100 + 'ms';
+    el.style.setProperty('--pdx', dx + 'px');
+    el.style.setProperty('--pdy', dy + 'px');
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  }
+}
+
+// multTable から重み付き抽選
+function _drawMult() {
+  const table  = LUCKY_CONFIG.multTable;
+  const total  = table.reduce((s, [, w]) => s + w, 0);
+  let r = Math.random() * total;
+  for (const [val, w] of table) {
+    r -= w;
+    if (r < 0) return val;
+  }
+  return table[table.length - 1][0];
+}
+
+const LUCKY_COST = LUCKY_CONFIG.cost;
+let _luckyPhase    = null;   // 'idle' | 'base' | 'mult' | 'done'
+let _luckyBase     = 0;
+let _luckyMults    = [];
+let _luckySpinning = false;
+
+function _luckyTotal() {
+  if (!_luckyMults.length) return _luckyBase;
+  return _luckyBase * _luckyMults.reduce((s, m) => s + m, 0);
+}
+
+function _luckyFormulaHtml() {
+  if (!_luckyBase) return '<div class="lk-formula lk-formula-ph"></div>';
+  let h = `<span class="lk-base">${_luckyBase}G</span>`;
+  if (_luckyMults.length) {
+    const sum = _luckyMults.reduce((s, m) => s + m, 0);
+    // 4個以上は内訳を省略して合計値だけ表示（1行に収める）
+    const sumStr = _luckyMults.length <= 3
+      ? (_luckyMults.length === 1 ? `${sum}` : `(${_luckyMults.join(' + ')})`)
+      : `${sum} <span class="lk-count">${_luckyMults.length}連</span>`;
+    h += ` <span class="lk-op">×</span><span class="lk-mult">${sumStr}</span>`;
+    h += ` <span class="lk-op">=</span><span class="lk-total">${fmt(_luckyBase * sum)}G</span>`;
+  }
+  return `<div class="lk-formula">${h}</div>`;
+}
+
+function openLucky() {
+  _luckyOpen     = true;
+  _luckyPhase    = 'idle';
+  _luckyBase     = 0;
+  _luckyMults    = [];
+  _luckySpinning = false;
+  _renderLucky();
+  document.getElementById('modal-lucky').style.display = 'flex';
+}
+
+function closeLucky() {
+  if (_luckySpinning) return;
+  _luckyOpen  = false;
+  _luckyPhase = null;
+  document.querySelector('.lucky-modal-box')?.classList.remove('lk-zone-active');
+  document.getElementById('modal-lucky').style.display = 'none';
+}
+
+function _renderLucky() {
+  const body = document.getElementById('lucky-body');
+  if (!body) return;
+
+  // 常に同じ構造: [フォーミュラ行] [中央コンテンツ] [ボタン行]
+  let centerHtml = '';
+  let btnsHtml   = '';
+
+  if (_luckyPhase === 'idle') {
+    const ok = state.gold >= LUCKY_COST;
+    centerHtml = `
+      <div class="lk-cost-line">1回 <strong>${fmt(LUCKY_COST)}G</strong></div>
+      <div class="lk-hint">初期G（${fmt(LUCKY_CONFIG.baseMin)}〜${fmt(LUCKY_CONFIG.baseMax)}）を抽選<br>大当たり（${Math.round(LUCKY_CONFIG.jackpotChance*100)}%）で倍率が積み上がる！<br>はずれで終了・獲得G確定</div>`;
+    btnsHtml = `
+      <button class="lk-btn lk-btn-start" onclick="luckyStart()" ${ok ? '' : 'disabled'}>🎰 挑戦する</button>
+      ${!ok ? `<div class="lk-nogold">G不足（所持: ${fmt(state.gold)}G）</div>` : ''}`;
+
+  } else if (_luckyPhase === 'zone') {
+    centerHtml = `
+      <div class="lk-zone-header">⚡ 特化ゾーン ⚡</div>
+      <div class="lk-slot-box"><div class="lk-reel lk-reel-zone" id="lk-reel">?×</div></div>
+      <div class="lk-msg" id="lk-msg"></div>`;
+    setTimeout(_doZoneSpin, 350);
+
+  } else if (_luckyPhase === 'base' || _luckyPhase === 'mult') {
+    const multMin = LUCKY_CONFIG.multTable[0][0];
+    const multMax = LUCKY_CONFIG.multTable[LUCKY_CONFIG.multTable.length - 1][0];
+    const label = _luckyPhase === 'base'
+      ? `初期G 抽選（${fmt(LUCKY_CONFIG.baseMin)} 〜 ${fmt(LUCKY_CONFIG.baseMax)}）`
+      : `倍率 抽選（× ${multMin} 〜 ${multMax}）大当たり ${Math.round(LUCKY_CONFIG.jackpotChance*100)}%`;
+    const initText = _luckyPhase === 'base' ? '?' : '?×';
+    centerHtml = `
+      <div class="lk-slot-label">${label}</div>
+      <div class="lk-slot-box"><div class="lk-reel" id="lk-reel">${initText}</div></div>
+      <div class="lk-msg" id="lk-msg"></div>`;
+    if (!_luckySpinning) {
+      btnsHtml = `<button class="lk-btn lk-btn-spin" onclick="luckySpin()">🎲 スピン！</button>`;
+    }
+
+  } else if (_luckyPhase === 'done') {
+    const reward = _luckyTotal();
+    centerHtml = `
+      <div class="lk-done-label">獲得G</div>
+      <div class="lk-done-amount">${fmt(reward)}G</div>`;
+    btnsHtml = `<button class="lk-btn lk-btn-claim" onclick="luckyClaim()">✨ 受け取る</button>`;
+  }
+
+  body.innerHTML = `
+    ${_luckyFormulaHtml()}
+    <div class="lk-center">${centerHtml}</div>
+    <div class="lk-btns">${btnsHtml}</div>`;
+
+  // ゾーン中はモーダル枠を金色に光らせる
+  document.querySelector('.lucky-modal-box')?.classList.toggle('lk-zone-active', _luckyPhase === 'zone');
+}
+
+function luckyStart() {
+  if (state.gold < LUCKY_COST || _luckySpinning) return;
+  state.gold -= LUCKY_COST;
+  updateShopDisplay();
+  _luckyBase     = 0;
+  _luckyMults    = [];
+  _luckyPhase    = 'base';
+  _luckySpinning = false;
+  _renderLucky();
+}
+
+function luckySpin() {
+  if (_luckySpinning) return;
+  _luckySpinning = true;
+
+  const isBase   = _luckyPhase === 'base';
+  const finalVal = isBase
+    ? Math.floor(Math.random() * (LUCKY_CONFIG.baseMax - LUCKY_CONFIG.baseMin + 1)) + LUCKY_CONFIG.baseMin
+    : _drawMult();
+  // 結果判定: superChance → 超大当たり、jackpotChance → 通常大当たり、それ以上 → はずれ
+  // 最初の3回は超大当たり含む当選確定（miss なし）
+  const guaranteed = !isBase && _luckyMults.length < 3;
+  const roll       = isBase ? -1 : Math.random();
+  const isSuper    = !isBase && roll < LUCKY_CONFIG.superChance;
+  const jackpot    = !isBase && !isSuper && (guaranteed || roll < LUCKY_CONFIG.jackpotChance);
+
+  _renderLucky(); // スピン中: ボタン非表示、リール表示
+
+  const reel = document.getElementById('lk-reel');
+  if (!reel) { _luckySpinning = false; return; }
+
+  if (isSuper) {
+    // 超大当たり: 特殊リールアニメーション → ゾーン突入
+    _animateSuperReel(reel, () => {
+      _luckySpinning = false;
+      _luckyPhase = 'zone';
+      _renderLucky();
+    });
+    return;
+  }
+
+  // 通常スピン (miss の場合は null を渡すとリールに「はずれ」を表示)
+  _animateLuckyReel(reel, isBase, (jackpot || isBase) ? finalVal : null, () => {
+    _luckySpinning = false;
+
+    if (isBase) {
+      _luckyBase  = finalVal;
+      _luckyPhase = 'mult';
+      _playLuckySfx('base');
+      const msg = document.getElementById('lk-msg');
+      if (msg) msg.innerHTML = `<span class="lk-msg-base">ベースG: ${fmt(finalVal)}G 確定！</span>`;
+      setTimeout(_renderLucky, 900);
+
+    } else if (jackpot) {
+      _luckyMults.push(finalVal);
+      _playLuckySfx('jackpot');
+      _luckyParticleBurst('jackpot');
+      const msg = document.getElementById('lk-msg');
+      if (msg) msg.innerHTML = `<span class="lk-jackpot-msg">🎉 大当たり！ ×${finalVal}！</span>`;
+      const r = document.getElementById('lk-reel');
+      if (r) r.classList.add('lk-jackpot-flash');
+      setTimeout(_renderLucky, 1050);
+
+    } else {
+      _playLuckySfx('miss');
+      const box = document.querySelector('.lucky-modal-box');
+      if (box) { box.classList.add('lk-shake'); setTimeout(() => box.classList.remove('lk-shake'), 500); }
+      const msg = document.getElementById('lk-msg');
+      if (msg) msg.innerHTML = `<span class="lk-miss-msg">💔 はずれ…</span>`;
+      _luckyPhase = 'done';
+      setTimeout(_renderLucky, 1250);
+    }
+  });
+}
+
+// 超大当たりリールアニメーション → "★" で止まりゾーン突入
+function _animateSuperReel(el, cb) {
+  const multMin = LUCKY_CONFIG.multTable[0][0];
+  const multMax = LUCKY_CONFIG.multTable[LUCKY_CONFIG.multTable.length - 1][0];
+  const duration = 1200;
+  const startTime = Date.now();
+  el.classList.add('lk-reel-spinning');
+
+  const timer = setInterval(() => {
+    const elapsed  = Date.now() - startTime;
+    const progress = elapsed / duration;
+    if (progress >= 1) {
+      clearInterval(timer);
+      el.classList.remove('lk-reel-spinning');
+      el.textContent = '★';
+      el.classList.add('lk-reel-super');
+      _playLuckySfx('super');
+      _luckyParticleBurst('super');
+      const _sbody = document.getElementById('lucky-body');
+      if (_sbody) { _sbody.classList.add('lk-super-flash'); setTimeout(() => _sbody.classList.remove('lk-super-flash'), 600); }
+      setTimeout(cb, 700);
+      return;
+    }
+    const chance = Math.pow(1 - progress, 1.2);
+    if (Math.random() < Math.max(chance, 0.07)) {
+      const r = Math.floor(Math.random() * (multMax - multMin + 1)) + multMin;
+      el.textContent = `${r}×`;
+    }
+  }, 80);
+}
+
+// 特化ゾーン: 自動スピン (50%ループ、外れで通常へ戻る)
+function _doZoneSpin() {
+  const reel = document.getElementById('lk-reel');
+  if (!reel || _luckyPhase !== 'zone') return;
+  _luckySpinning = true;
+
+  const finalVal = _drawMult();
+  const cont     = Math.random() < LUCKY_CONFIG.zoneLoopChance;
+
+  _animateLuckyReel(reel, false, cont ? finalVal : null, () => {
+    _luckySpinning = false;
+    if (cont) {
+      _luckyMults.push(finalVal);
+      // 計算式だけ差し替え（全再描画せず）
+      const body = document.getElementById('lucky-body');
+      if (body) {
+        const fe = body.querySelector('.lk-formula');
+        const newHtml = _luckyFormulaHtml();
+        if (fe && newHtml) {
+          const tmp = document.createElement('div');
+          tmp.innerHTML = newHtml;
+          fe.replaceWith(tmp.firstChild);
+        } else if (newHtml && !fe) {
+          body.insertAdjacentHTML('afterbegin', newHtml);
+        }
+      }
+      _playLuckySfx('zone_win');
+      _luckyParticleBurst('jackpot');
+      const msg = document.getElementById('lk-msg');
+      if (msg) msg.innerHTML = `<span class="lk-jackpot-msg">+${finalVal}× ！</span>`;
+      setTimeout(_doZoneSpin, 450); // テンポよく次へ
+    } else {
+      _playLuckySfx('zone_exit');
+      const msg = document.getElementById('lk-msg');
+      if (msg) msg.innerHTML = `<span class="lk-zone-exit-msg">ゾーン終了…</span>`;
+      _luckyPhase = 'mult';
+      setTimeout(_renderLucky, 1000);
+    }
+  }, 700); // ゾーン内は高速アニメ
+}
+
+function _animateLuckyReel(el, isBase, finalVal, cb, duration = 1500) {
+  // finalVal: 数値(当選) | null(はずれ)
+  const min = isBase ? LUCKY_CONFIG.baseMin : LUCKY_CONFIG.multTable[0][0];
+  const max = isBase ? LUCKY_CONFIG.baseMax : LUCKY_CONFIG.multTable[LUCKY_CONFIG.multTable.length - 1][0];
+  const startTime = Date.now();
+  el.classList.remove('lk-reel-land', 'lk-reel-miss', 'lk-reel-super');
+  el.classList.add('lk-reel-spinning');
+
+  const timer = setInterval(() => {
+    const elapsed  = Date.now() - startTime;
+    const progress = elapsed / duration;
+
+    if (progress >= 1) {
+      clearInterval(timer);
+      el.classList.remove('lk-reel-spinning');
+      if (finalVal !== null) {
+        el.textContent = isBase ? `${finalVal}` : `${finalVal}×`;
+        el.classList.add('lk-reel-land');
+      } else {
+        el.textContent = 'はずれ';
+        el.classList.add('lk-reel-miss');
+      }
+      setTimeout(cb, 450);
+      return;
+    }
+
+    // 徐々にスロー: progress が大きくなるほど数字が変わりにくくなる
+    const chance = Math.pow(1 - progress, 1.2);
+    if (Math.random() < Math.max(chance, 0.07)) {
+      const r = Math.floor(Math.random() * (max - min + 1)) + min;
+      el.textContent = isBase ? `${r}` : `${r}×`;
+    }
+  }, 80);
+}
+
+function luckyClaim() {
+  const reward = _luckyTotal();
+  _playLuckySfx('claim');
+  _luckyParticleBurst('claim');
+  state.gold += reward;
+  updateShopDisplay();
+  autoSave();
+  addSystemLog(`🎰 運試し屋: ${fmt(reward)}G 獲得！`);
+  closeLucky();
 }
 
 // --- 初期化 ---
