@@ -596,7 +596,7 @@ function spawnEnemy() {
 
   elEnemyName.textContent       = enemy.name;
   elEnemyImg.src                = enemy.img;
-  const evaStr = enemy.evasion > 0 ? `  EVA ${Math.round(enemy.evasion * 100)}%` : "";
+  const evaStr = enemy.evasion > 0 ? `  回避率 ${Math.round(enemy.evasion * 100)}%` : "";
   elEnemyAtkDisplay.textContent = `ATK ${enemy.atk}  ${(1000 / enemy.atkInterval).toFixed(1)}/s${evaStr}`;
   updateStageDisplay();
   updateHpDisplay();
@@ -698,7 +698,7 @@ function tick() {
   if (rand > effectiveHit) {
     if (state.currentEnemy.evasion > 0 && rand <= s.hitRate) {
       addLog(`${state.currentEnemy.name} はかわした！`);
-      showDamageNumber("EVADE", "miss");
+      showDamageNumber("回避", "miss");
     } else {
       addLog("ミス！");
       showDamageNumber("MISS", "miss");
@@ -739,7 +739,7 @@ function tickMulti(s) {
     if (rand > effectiveHit) {
       if ((e.evasion || 0) > 0 && rand <= s.hitRate) {
         addLog(`${e.name} はかわした！`);
-        showDamageNumber("EVADE", "miss");
+        showDamageNumber("回避", "miss");
       } else {
         addLog("ミス！");
         showDamageNumber("MISS", "miss");
@@ -1997,8 +1997,8 @@ function renderMonsterBook() {
         .join("<br>");
 
       const st = computeEnemyStats(mi, enemyDef, isBoss, isRare);
-      const evaSpan  = st.evasion > 0 ? `<span class="bmc-stat-eva">EVA ${Math.round(st.evasion * 100)}%</span>` : "";
-      const critSpan = st.critRes > 0 ? `<span class="bmc-stat-crit">CRI耐 ${Math.round(st.critRes * 100)}%</span>` : "";
+      const evaSpan  = st.evasion > 0 ? `<span class="bmc-stat-eva">回避率 ${Math.round(st.evasion * 100)}%</span>` : "";
+      const critSpan = st.critRes > 0 ? `<span class="bmc-stat-crit">クリ耐性 ${Math.round(st.critRes * 100)}%</span>` : "";
       const cardCls = isRare ? "rare-card" : isBoss ? "boss-card" : "";
       const topBadge = isRare
         ? `<span class="rare-badge">RARE</span>`

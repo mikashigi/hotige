@@ -2,6 +2,23 @@
 
 > バージョン形式を `YYYY-MM-DD-連番` に変更（以前は v0.1.x）
 
+## 2026-03-08-31 - 2026-03-08
+
+### 修正・追加
+- 敵ステータス表示の「EVA」を「回避率」に変更
+- 回避時のダメージ表示「EVADE」を「回避」に変更
+- 全マップのモンスターに回避率・クリ耐性を追加（ほぼ全モンスターに設定）
+  - 草原: スライム(critRes5%), ゴブリン(evasion6%), ゴブリン2(evasion8%+critRes8%), 草原の王(evasion8%+critRes10%)
+  - 森: ウルフ(evasion12%), キノコ人(critRes10%), 森の主(evasion12%+critRes10%)
+  - 洞窟: ゴブリン長(evasion10%+critRes12%)
+  - 砂漠: サンドワーム(critRes15%), ミイラ兵(evasion6%+critRes12%), 砂漠の覇者(evasion8%+critRes15%)
+  - 雪原: アイス魔(evasion10%), イエティ(critRes15%)
+  - 火山: ラバスライム(critRes20%), 火竜(evasion10%+critRes30%)
+  - 海底: 人魚戦士(evasion10%)
+  - 天空: 天空騎士(critRes15%), 古代竜(evasion8%+critRes25%)
+  - 魔界: デーモン(evasion10%+critRes10%)
+  - 魔王城: 魔王親衛隊(critRes20%), 魔王の騎士(evasion12%+critRes15%), 魔王の怒り(evasion10%+critRes15%)
+
 ## 2026-03-08-30 - 2026-03-08
 
 ### 修正
