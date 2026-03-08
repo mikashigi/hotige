@@ -655,6 +655,7 @@ function flashEnemyHit() {
 
 // --- 単体敵討伐の共通処理（tick / 消費アイテム 共用）---
 function _finishEnemyKill() {
+  if (state.cleared) return;
   stopEnemyAttack();
   const defeatedEnemy = state.currentEnemy;
   const earned = Math.floor(defeatedEnemy.gold * (0.75 + Math.random() * 0.5));
@@ -689,6 +690,7 @@ function _finishEnemyKill() {
 
 // --- プレイヤー攻撃 ---
 function tick() {
+  if (state.cleared || !state.currentEnemy) return;
   const s = computePlayerStats();
   if (state.multiEnemies !== null) { tickMulti(s); return; }
 
@@ -824,8 +826,11 @@ function recordKill(mapIndex, enemyName) {
 function gameClear() {
   state.cleared = true;
   checkAchievements();
+  clearStun();
   stopEnemyAttack();
   clearInterval(attackIntervalId);
+  attackIntervalId = null;
+  _lastInterval = -1;
   elMapName.textContent = "★ GAME CLEAR ★";
   elStageGrid.querySelectorAll(".stage-cell").forEach(c => {
     c.classList.remove("done", "current", "multi-active");
@@ -889,6 +894,13 @@ function canRefine(recipe) {
   return recipe.inputs.every(inp => (state.inventory[inp.itemId] || 0) >= inp.count);
 }
 
+function maxRefineCount(recipe) {
+  return recipe.inputs.reduce((min, inp) => {
+    const have = state.inventory[inp.itemId] || 0;
+    return Math.min(min, Math.floor(have / inp.count));
+  }, Infinity);
+}
+
 function consumeRefineInputs(recipe) {
   recipe.inputs.forEach(inp => {
     state.inventory[inp.itemId] = (state.inventory[inp.itemId] || 0) - inp.count;
@@ -905,12 +917,13 @@ function startRefine(recipeId, count) {
   if (state.refine) return;
   const recipe = REFINE_RECIPES.find(r => r.id === recipeId);
   if (!recipe || !canRefine(recipe)) return;
+  const actualCount = count === -1 ? -1 : Math.min(count, maxRefineCount(recipe));
   consumeRefineInputs(recipe);
   state.refine = {
     recipeId,
     elapsed:   0,
     duration:  recipe.time * 1000,
-    countLeft: count, // -1 = 無限
+    countLeft: actualCount, // -1 = 無限
   };
   invalidateStats();
   clearInterval(refineIntervalId);
