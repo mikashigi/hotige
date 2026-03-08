@@ -6,16 +6,17 @@ function makeEnemy(mapIndex, stageInMap) {
     ? def.boss
     : def.enemies[Math.floor(Math.random() * def.enemies.length)];
 
-  const mult     = 1 + mapIndex * 0.8;
+  const mult     = Math.pow(2, mapIndex); // マップごとに2倍
   const si       = stageInMap;
   const hpMult   = enemyDef.hpMult  ?? 1.0;
   const atkMult  = enemyDef.atkMult ?? 1.0;
   const bossHpM  = def.isFinal ? 10 : 6;
   const bossAtkM = def.isFinal ? 4  : 3;
 
-  const baseHp   = Math.round(20 * mult * (1 + si * 0.15));
-  const baseAtk  = Math.round(3  * Math.sqrt(mult) * (1 + si * 0.08));
-  const baseGold = Math.round(5  * mult * (1 + si * 0.1));
+  // 草原1-1=5, 1-2=10, 1-3≈16, 1-4≈24 になる二次曲線
+  const baseHp   = Math.round(5 * mult * (1 + si * 0.9 + si * si * 0.12));
+  const baseAtk  = Math.round(3 * Math.sqrt(mult) * (1 + si * 0.08));
+  const baseGold = Math.round(5 * mult * (1 + si * 0.1));
 
   return {
     name:        enemyDef.name,
@@ -36,11 +37,11 @@ function makeEnemy(mapIndex, stageInMap) {
 function makeRareEnemy(mapIndex, stageInMap) {
   const def  = MAP_DEFS[mapIndex];
   const rare = def.rare;
-  const mult = 1 + mapIndex * 0.8;
+  const mult = Math.pow(2, mapIndex);
   const si   = stageInMap;
-  const baseHp   = Math.round(20 * mult * (1 + si * 0.15));
-  const baseAtk  = Math.round(3  * Math.sqrt(mult) * (1 + si * 0.08));
-  const baseGold = Math.round(5  * mult * (1 + si * 0.1));
+  const baseHp   = Math.round(5 * mult * (1 + si * 0.9 + si * si * 0.12));
+  const baseAtk  = Math.round(3 * Math.sqrt(mult) * (1 + si * 0.08));
+  const baseGold = Math.round(5 * mult * (1 + si * 0.1));
   return {
     name:        rare.name,
     img:         rare.img,
@@ -60,14 +61,14 @@ function makeRareEnemy(mapIndex, stageInMap) {
 // 図鑑用：特定の敵定義から代表ステータスを計算（通常 si=4、ボス si=9）
 function computeEnemyStats(mi, enemyDef, isBoss, isRare = false) {
   const def    = MAP_DEFS[mi];
-  const mult   = 1 + mi * 0.8;
+  const mult   = Math.pow(2, mi);
   const si     = isBoss ? 9 : 4;
   const hpMult   = enemyDef.hpMult  ?? 1.0;
   const atkMult  = enemyDef.atkMult ?? 1.0;
   const bossHpM  = def.isFinal ? 10 : 6;
   const bossAtkM = def.isFinal ? 4  : 3;
-  const baseHp   = Math.round(20 * mult * (1 + si * 0.15));
-  const baseAtk  = Math.round(3  * Math.sqrt(mult) * (1 + si * 0.08));
+  const baseHp   = Math.round(5 * mult * (1 + si * 0.9 + si * si * 0.12));
+  const baseAtk  = Math.round(3 * Math.sqrt(mult) * (1 + si * 0.08));
   return {
     evasion: enemyDef.evasion ?? 0,
     critRes: enemyDef.critRes ?? 0,
