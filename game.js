@@ -767,39 +767,45 @@ function _finishEnemyKill() {
 function tick() {
   if (state.cleared || (!state.currentEnemy && !state.multiEnemies)) return;
   const s = computePlayerStats();
-  if (state.multiEnemies !== null) { tickMulti(s); return; }
-
-  // 通常単体：実効命中率 = 命中率 - 敵回避率
-  const rand = Math.random();
-  const effectiveHit = Math.max(0, s.hitRate - state.currentEnemy.evasion);
-  if (rand > effectiveHit) {
-    if (state.currentEnemy.evasion > 0 && rand <= s.hitRate) {
-      addLog("ミス！");
-      showDamageNumber("MISS", "miss");
-    } else {
-      addLog("ミス！");
-      showDamageNumber("MISS", "miss");
-    }
+  if (state.multiEnemies !== null) {
+    for (let i = 0; i < s.multiAttackCount; i++) tickMulti(s);
     return;
   }
 
-  let dmg = s.totalAtk;
-  let suffix = "";
-  let dmgType = null;
-  const effectiveCrit = Math.max(0, s.critChance - state.currentEnemy.critRes);
-  if (Math.random() < effectiveCrit) {
-    dmg = Math.floor(dmg * 1.5);
-    suffix  = " ★クリティカル！";
-    dmgType = "crit";
+  // 通常単体：ダブルアタック対応
+  for (let hit = 0; hit < s.attackCount; hit++) {
+    if (!state.currentEnemy || state.enemyHp <= 0) break;
+
+    const rand = Math.random();
+    const effectiveHit = Math.max(0, s.hitRate - state.currentEnemy.evasion);
+    if (rand > effectiveHit) {
+      addLog("ミス！");
+      showDamageNumber("MISS", "miss");
+      continue;
+    }
+
+    let dmg = s.totalAtk;
+    let suffix = "";
+    let dmgType = null;
+    const effectiveCrit = Math.max(0, s.critChance - state.currentEnemy.critRes);
+    if (Math.random() < effectiveCrit) {
+      const mult = _critMult(
+        Math.round(s.critChance * 100),
+        Math.round(state.currentEnemy.critRes * 100)
+      );
+      dmg = Math.floor(dmg * mult);
+      suffix  = ` ★クリティカル！（×${mult.toFixed(2)}）`;
+      dmgType = "crit";
+    }
+
+    state.enemyHp -= dmg;
+    showDamageNumber(dmg, dmgType);
+    flashEnemyHit();
+    addLog(`攻撃！ ${dmg} ダメージ（残HP: ${Math.max(0, state.enemyHp)}）${suffix}`);
+    updateHpDisplay();
+
+    if (state.enemyHp <= 0) { _finishEnemyKill(); break; }
   }
-
-  state.enemyHp -= dmg;
-  showDamageNumber(dmg, dmgType);
-  flashEnemyHit();
-  addLog(`攻撃！ ${dmg} ダメージ（残HP: ${Math.max(0, state.enemyHp)}）${suffix}`);
-  updateHpDisplay();
-
-  if (state.enemyHp <= 0) _finishEnemyKill();
 }
 
 // --- 一括討伐モードのプレイヤー攻撃 ---
@@ -827,9 +833,13 @@ function tickMulti(s) {
     let dmgType = null;
     let suffix = "";
     if (Math.random() < Math.max(0, s.critChance - (e.critRes || 0))) {
-      dmg = Math.floor(dmg * 1.5);
+      const mult = _critMult(
+        Math.round(s.critChance * 100),
+        Math.round((e.critRes || 0) * 100)
+      );
+      dmg = Math.floor(dmg * mult);
       dmgType = "crit";
-      suffix = " ★クリティカル！";
+      suffix = ` ★クリティカル！（×${mult.toFixed(2)}）`;
     }
     e.currentHp = Math.max(0, e.currentHp - dmg);
     showDamageNumber(dmg, dmgType);
@@ -1394,6 +1404,18 @@ function toggleMute() {
 }
 
 // --- ステータス計算 ---
+// クリアポイント補正込みのクリティカル倍率
+// critChancePct: プレイヤーのクリ率(%), critResPct: 敵のクリ耐性(%)
+function _critMult(critChancePct, critResPct) {
+  const BASE = 1.5;
+  if (state.clearPoints <= 0) return BASE;
+  const diff = critChancePct - critResPct;
+  if (diff <= 100) return BASE;
+  const excess  = diff - 100;
+  const divisor = Math.max(2, 11 - state.clearPoints); // cp=1→10, cp=2→9, ...
+  return BASE + Math.floor(excess / divisor) / 100;
+}
+
 function computePlayerStats() {
   if (_cachedStats) return _cachedStats;
   const raw = { str: 0, vit: 0, int: 0, dex: 0, agi: 0, luk: 0 };
@@ -1447,13 +1469,27 @@ function computePlayerStats() {
     }
   }
 
+  const rawInterval    = 1000 - raw.agi * 5;
+  const normInterval   = Math.max(300, rawInterval);
+  const normCount      = rawInterval < 300
+    ? Math.min(20, Math.max(1, Math.floor(300 / Math.max(rawInterval, 1))))
+    : 1;
+  const multiRawInt    = Math.floor(rawInterval / 3);
+  const multiInterval  = Math.max(100, multiRawInt);
+  const multiCount     = multiRawInt < 100
+    ? Math.min(20, Math.max(1, Math.floor(100 / Math.max(multiRawInt, 1))))
+    : 1;
+
   _cachedStats = {
     ...raw,
-    totalAtk:       state.attack + Math.floor(raw.str * 0.8) + Math.floor(raw.int * 0.5),
-    playerMaxHp:    50 + raw.vit * 5,
-    hitRate:        0.90 + raw.dex * 0.003 + raw.int * 0.001,
-    attackInterval: Math.max(300, 1000 - raw.agi * 8),
-    critChance:     raw.luk * 0.02 + raw.int * 0.005,
+    totalAtk:          state.attack + Math.floor(raw.str * 1.0) + Math.floor(raw.int * 0.4),
+    playerMaxHp:       50 + raw.vit * 5,
+    hitRate:           0.90 + raw.dex * 0.0015 + raw.int * 0.001,
+    attackInterval:    normInterval,
+    attackCount:       normCount,
+    multiInterval,
+    multiAttackCount:  multiCount,
+    critChance:        raw.luk * 0.008 + raw.int * 0.003,
   };
   return _cachedStats;
 }
@@ -1468,9 +1504,7 @@ function invalidateStats() {
 }
 
 function resetAttackInterval(s) {
-  const interval = state.multiEnemies
-    ? Math.max(100, Math.floor(s.attackInterval / 3))
-    : s.attackInterval;
+  const interval = state.multiEnemies ? s.multiInterval : s.attackInterval;
   if (interval === _lastInterval && attackIntervalId !== null) return;
   _lastInterval = interval;
   clearInterval(attackIntervalId);
@@ -1498,7 +1532,10 @@ function updateStatsDisplay() {
   elPlayerHpDisplay.textContent = `${state.playerHp} / ${state.playerMaxHp}`;
 
   elInfoHit.textContent  = Math.round(s.hitRate * 100);
-  elInfoSpd.textContent  = (1000 / s.attackInterval).toFixed(1);
+  const effSpd = s.attackCount * 1000 / s.attackInterval;
+  elInfoSpd.textContent  = s.attackCount > 1
+    ? `${(1000 / s.attackInterval).toFixed(1)}×${s.attackCount}`
+    : effSpd.toFixed(1);
   elInfoCrit.textContent = Math.round(s.critChance * 100);
 
   // クリアポイント表示
