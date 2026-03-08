@@ -212,6 +212,34 @@ html, body {
   justify-content: center;
   gap: 4px;
 }
+/* ゲームクリア時のカルーセル */
+#map-carousel.gc-cleared {
+  width: 300px;
+}
+#map-carousel.gc-cleared::before,
+#map-carousel.gc-cleared::after {
+  display: none;
+}
+#map-carousel.gc-cleared #mc-track {
+  transform: translateX(-75px) !important;
+  transition: none !important;
+}
+#map-carousel.gc-cleared #mc-cur {
+  width: 300px;
+}
+#map-carousel.gc-cleared #map-name {
+  font-size: 1.1rem;
+  color: #7a4800;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+  animation: gcNamePulse 1.6s ease-in-out infinite alternate;
+}
+@keyframes gcNamePulse {
+  from { color: #7a4800; text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
+  to   { color: #c07000; text-shadow: 0 0 8px rgba(200,120,0,0.6), 0 1px 0 rgba(255,255,255,0.5); }
+}
+
 /* ステージグリッド */
 #map-icon {
   width: 18px;
@@ -2330,23 +2358,29 @@ html, body {
 .lk-msg-base     { color: var(--text-mid); font-size: 0.88rem; }
 .lk-zone-exit-msg{ color: #886600; }
 
-/* 特化ゾーン */
+/* 超運試しゾーン */
 .lk-zone-header {
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 1.3rem;
   font-weight: bold;
-  color: #c07800;
-  letter-spacing: 0.1em;
-  animation: lkZonePulse 0.75s ease-in-out infinite alternate;
+  letter-spacing: 0.12em;
+  animation: lkZoneHeaderAnim 0.6s ease-in-out infinite alternate;
 }
-@keyframes lkZonePulse {
-  from { opacity: 0.65; text-shadow: 0 0 4px rgba(255,180,0,0.5); }
-  to   { opacity: 1.00; text-shadow: 0 0 14px rgba(255,180,0,0.9); }
+@keyframes lkZoneHeaderAnim {
+  0%   { color: #ff6060; text-shadow: 0 0 10px rgba(255,80,80,0.9),  0 0 24px rgba(255,80,80,0.5); transform: scale(1.00); }
+  33%  { color: #ffcc00; text-shadow: 0 0 10px rgba(255,200,0,0.9),  0 0 24px rgba(255,200,0,0.5); }
+  66%  { color: #44ddff; text-shadow: 0 0 10px rgba(60,200,255,0.9), 0 0 24px rgba(60,200,255,0.5); }
+  100% { color: #aaff66; text-shadow: 0 0 10px rgba(120,255,80,0.9), 0 0 24px rgba(120,255,80,0.5); transform: scale(1.06); }
 }
 .lk-reel-zone {
-  background: #1c1000;
-  border-color: #907000;
-  color: #ffd040;
+  background: #0a0a1c;
+  border-color: #8060ff;
+  color: #cc99ff;
+  animation: lkReelZonePulse 0.5s ease-in-out infinite alternate;
+}
+@keyframes lkReelZonePulse {
+  from { box-shadow: inset 0 4px 12px rgba(0,0,0,0.75), 0 0  8px rgba(150,80,255,0.5); }
+  to   { box-shadow: inset 0 4px 12px rgba(0,0,0,0.75), 0 0 22px rgba(180,100,255,0.9); }
 }
 .lk-reel-super {
   color: #ffe060 !important;
@@ -2425,14 +2459,16 @@ html, body {
   100% { transform: translate(var(--pdx), var(--pdy)) scale(0.3); opacity: 0; }
 }
 
-/* 特化ゾーン中のモーダル枠 */
+/* 超運試し中のモーダル枠 */
 .lucky-modal-box.lk-zone-active {
-  box-shadow: 0 0 0 3px #c09000, 0 0 22px 6px rgba(255,190,0,0.45);
-  animation: lkZoneBorder 1s ease-in-out infinite alternate;
+  animation: lkZoneBorder 0.7s linear infinite;
 }
 @keyframes lkZoneBorder {
-  from { box-shadow: 0 0 0 3px #c09000, 0 0 14px 4px rgba(255,190,0,0.35); }
-  to   { box-shadow: 0 0 0 3px #ffe040, 0 0 30px 10px rgba(255,210,0,0.6); }
+  0%   { box-shadow: 0 0 0 3px #ff5050, 0 0 28px 8px rgba(255,60,60,0.5); }
+  25%  { box-shadow: 0 0 0 3px #ffcc00, 0 0 28px 8px rgba(255,200,0,0.5); }
+  50%  { box-shadow: 0 0 0 3px #44ddff, 0 0 28px 8px rgba(60,200,255,0.5); }
+  75%  { box-shadow: 0 0 0 3px #aaff66, 0 0 28px 8px rgba(120,255,80,0.5); }
+  100% { box-shadow: 0 0 0 3px #ff5050, 0 0 28px 8px rgba(255,60,60,0.5); }
 }
 
 /* モーダルシェイク（はずれ） */

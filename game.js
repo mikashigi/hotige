@@ -439,6 +439,9 @@ function spawnMultiEnemies() {
   addLog(`★ 一括討伐モード！ ${state.multiEnemies.length}体が一斉出現！`);
   addSystemLog(`${MAP_DEFS[state.mapIndex].name}: ボス100回討伐達成！`);
   updateConsumableDisplay();
+  // 攻撃速度を一括モード（÷3）に確実にリセット
+  invalidateStats();
+  resetAttackInterval(computePlayerStats());
 }
 
 function updateMultiStats() {
@@ -735,7 +738,7 @@ function _finishEnemyKill() {
 
 // --- プレイヤー攻撃 ---
 function tick() {
-  if (state.cleared || !state.currentEnemy) return;
+  if (state.cleared || (!state.currentEnemy && !state.multiEnemies)) return;
   const s = computePlayerStats();
   if (state.multiEnemies !== null) { tickMulti(s); return; }
 
@@ -876,6 +879,8 @@ function gameClear() {
   clearInterval(attackIntervalId);
   attackIntervalId = null;
   _lastInterval = -1;
+  document.getElementById('map-carousel').classList.add('gc-cleared');
+  document.getElementById('map-icon').style.display = 'none';
   elMapName.textContent = "★ GAME CLEAR ★";
   elMcPrev.textContent = "";
   elMcNext.textContent = "";
@@ -2112,8 +2117,8 @@ const LUCKY_CONFIG = {
   //   jackpotChance の中に含まれる確率。必ず jackpotChance 未満にすること
   superChance:   0.08,   // ← ここを変える (0.0〜jackpotChance)
 
-  // ── 特化ゾーンのループ確率 ────────────────────────────────
-  zoneLoopChance: 0.50,  // ← ここを変える (0.0〜1.0)
+  // ── 超運試しのループ確率 ──────────────────────────────────
+  zoneLoopChance: 0.90,  // ← ここを変える (0.0〜1.0)
 
   // ── 初期G 範囲 ────────────────────────────────────────────
   baseMin:  50,           // ← 最小値
@@ -2165,9 +2170,9 @@ function _playLuckySfx(type) {
     case 'super':
       [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, now + i * 0.065, 0.3, 0.22)); break;
     case 'zone_win':
-      tone(1047, now, 0.1, 0.13); tone(1319, now + 0.07, 0.18, 0.11); break;
+      [784, 1047, 1319, 1568].forEach((f, i) => tone(f, now + i * 0.055, 0.28, 0.14)); break;
     case 'zone_exit':
-      tone(659, now, 0.18, 0.13); tone(440, now + 0.13, 0.25, 0.11); break;
+      tone(523, now, 0.22, 0.15); tone(392, now + 0.12, 0.28, 0.18); tone(330, now + 0.26, 0.3, 0.22); break;
     case 'claim':
       [523, 659, 784, 1047, 1319, 1568].forEach((f, i) =>
         tone(f, now + i * 0.055, 0.38, i < 5 ? 0.16 : 0.26)); break;
@@ -2241,6 +2246,7 @@ let _luckyPhase    = null;   // 'idle' | 'base' | 'mult' | 'done'
 let _luckyBase     = 0;
 let _luckyMults    = [];
 let _luckySpinning = false;
+let _zoneSpinCount = 0; // 超運試し内のスピン回数（1回目はずれなし保証）
 
 function _luckyTotal() {
   if (!_luckyMults.length) return _luckyBase;
@@ -2299,7 +2305,7 @@ function _renderLucky() {
 
   } else if (_luckyPhase === 'zone') {
     centerHtml = `
-      <div class="lk-zone-header">⚡ 特化ゾーン ⚡</div>
+      <div class="lk-zone-header">🌟 超運試し 🌟</div>
       <div class="lk-slot-box"><div class="lk-reel lk-reel-zone" id="lk-reel">?×</div></div>
       <div class="lk-msg" id="lk-msg"></div>`;
     setTimeout(_doZoneSpin, 350);
@@ -2338,8 +2344,6 @@ function _renderLucky() {
 
 function luckyStart() {
   if (state.gold < LUCKY_COST || _luckySpinning) return;
-  state.gold -= LUCKY_COST;
-  updateShopDisplay();
   _luckyBase     = 0;
   _luckyMults    = [];
   _luckyPhase    = 'base';
@@ -2371,7 +2375,8 @@ function luckySpin() {
     // 超大当たり: 特殊リールアニメーション → ゾーン突入
     _animateSuperReel(reel, () => {
       _luckySpinning = false;
-      _luckyPhase = 'zone';
+      _luckyPhase    = 'zone';
+      _zoneSpinCount = 0;
       _renderLucky();
     });
     return;
@@ -2442,14 +2447,15 @@ function _animateSuperReel(el, cb) {
   }, 80);
 }
 
-// 特化ゾーン: 自動スピン (50%ループ、外れで通常へ戻る)
+// 超運試し: 自動スピン (80%ループ、1回目はずれなし保証)
 function _doZoneSpin() {
   const reel = document.getElementById('lk-reel');
   if (!reel || _luckyPhase !== 'zone') return;
   _luckySpinning = true;
 
   const finalVal = _drawMult();
-  const cont     = Math.random() < LUCKY_CONFIG.zoneLoopChance;
+  const cont     = _zoneSpinCount === 0 || Math.random() < LUCKY_CONFIG.zoneLoopChance;
+  _zoneSpinCount++;
 
   _animateLuckyReel(reel, false, cont ? finalVal : null, () => {
     _luckySpinning = false;
@@ -2476,7 +2482,7 @@ function _doZoneSpin() {
     } else {
       _playLuckySfx('zone_exit');
       const msg = document.getElementById('lk-msg');
-      if (msg) msg.innerHTML = `<span class="lk-zone-exit-msg">ゾーン終了…</span>`;
+      if (msg) msg.innerHTML = `<span class="lk-zone-exit-msg">超運試し終了…</span>`;
       _luckyPhase = 'mult';
       setTimeout(_renderLucky, 1000);
     }
@@ -2522,10 +2528,11 @@ function luckyClaim() {
   const reward = _luckyTotal();
   _playLuckySfx('claim');
   _luckyParticleBurst('claim');
-  state.gold += reward;
+  state.gold += reward - LUCKY_COST;
   updateShopDisplay();
   autoSave();
-  addSystemLog(`🎰 運試し屋: ${fmt(reward)}G 獲得！`);
+  const net = reward - LUCKY_COST;
+  addSystemLog(`🎰 運試し屋: ${fmt(reward)}G 獲得（コスト差引 ${net >= 0 ? '+' : ''}${fmt(net)}G）`);
   closeLucky();
 }
 
