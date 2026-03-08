@@ -200,10 +200,16 @@ function addSystemLog(msg) {
 
 // --- 敵攻撃インターバル ---
 let enemyAttackIntervalId = null;
+let stunTimeoutId = null;
 
 function stopEnemyAttack() {
   clearInterval(enemyAttackIntervalId);
   enemyAttackIntervalId = null;
+}
+
+function clearStun() {
+  clearTimeout(stunTimeoutId);
+  stunTimeoutId = null;
 }
 
 // --- 単体敵の攻撃 ---
@@ -214,6 +220,7 @@ function enemyTick(enemy) {
   addLog(`${enemy.name} の攻撃！ ${enemy.atk} ダメージを受けた`);
 
   if (state.playerHp <= 0) {
+    clearStun();
     stopEnemyAttack();
     clearInterval(attackIntervalId);
     attackIntervalId = null;
@@ -253,6 +260,7 @@ function multiEnemyTick() {
   addLog(`${alive.length}体の一斉攻撃！ ${totalAtk} ダメージ`);
 
   if (state.playerHp <= 0) {
+    clearStun();
     stopEnemyAttack();
     clearInterval(attackIntervalId);
     attackIntervalId = null;
@@ -375,6 +383,7 @@ function spawnMultiEnemies() {
   updateStageDisplay();
 
   // 一括モードの敵攻撃インターバル（2000ms ごとに全員で攻撃）
+  clearStun();
   clearInterval(enemyAttackIntervalId);
   enemyAttackIntervalId = setInterval(multiEnemyTick, 2000);
 
@@ -591,6 +600,7 @@ function spawnEnemy() {
   else if (enemy.isBoss) addLog(`★ BOSS: ${enemy.name} が現れた！`);
   else               addLog(`${enemy.name} が現れた！`);
 
+  clearStun();
   clearInterval(enemyAttackIntervalId);
   enemyAttackIntervalId = setInterval(() => enemyTick(enemy), enemy.atkInterval);
   updateConsumableDisplay();
@@ -1405,6 +1415,9 @@ function rollDrops(enemy) {
   // 消費アイテム共有ドロップ
   const bombRate = enemy.isBoss ? 0.12 : enemy.isRare ? 0.07 : 0.03;
   if (Math.random() < bombRate) _grantConsumable("bomb_herb");
+
+  const smokeRate = enemy.isBoss ? 0.10 : enemy.isRare ? 0.05 : 0.02;
+  if (Math.random() < smokeRate) _grantConsumable("smoke_ball");
 }
 
 // --- 消費アイテム ---
@@ -1427,6 +1440,33 @@ function useConsumable(id) {
     state.pendingBatch = true;
     addLog(`${def.icon} ${def.name} 使用！ 次のマップで一括討伐モードが発動します`);
     updateConsumableDisplay();
+    return;
+  }
+
+  if (def.effect.type === "stun") {
+    const inMulti = state.multiEnemies !== null;
+    const hasEnemy = inMulti
+      ? state.multiEnemies.some(e => e.currentHp > 0)
+      : (state.currentEnemy != null && state.enemyHp > 0);
+    if (!hasEnemy || stunTimeoutId !== null) return;
+    clearInterval(enemyAttackIntervalId);
+    enemyAttackIntervalId = null;
+    state.consumables[id]--;
+    const dur = def.effect.duration;
+    addLog(`${def.icon} ${def.name} 使用！ 敵の攻撃が${dur / 1000}秒間止まった！`);
+    updateConsumableDisplay();
+    stunTimeoutId = setTimeout(() => {
+      stunTimeoutId = null;
+      if (state.multiEnemies && state.multiEnemies.some(e => e.currentHp > 0)) {
+        clearInterval(enemyAttackIntervalId);
+        enemyAttackIntervalId = setInterval(multiEnemyTick, 2000);
+      } else if (state.currentEnemy && state.enemyHp > 0) {
+        clearInterval(enemyAttackIntervalId);
+        enemyAttackIntervalId = setInterval(() => enemyTick(state.currentEnemy), state.currentEnemy.atkInterval);
+      }
+      addLog("💨 煙が晴れた！敵が攻撃を再開した！");
+      updateConsumableDisplay();
+    }, dur);
     return;
   }
 
@@ -1511,6 +1551,9 @@ function updateConsumableDisplay() {
       } else if (c.effect.type === "damage" && (inMulti || !hasEnemy)) {
         disabled = "disabled";
       } else if (c.effect.type === "batch_mode" && inMulti) {
+        disabled = "disabled";
+      } else if (c.effect.type === "stun" && (stunTimeoutId !== null || !hasEnemy)) {
+        if (stunTimeoutId !== null) btnLabel = "発動中";
         disabled = "disabled";
       }
       const pendingBadge = isPending
@@ -1667,6 +1710,7 @@ function loadGame() {
 function returnToFirstMap() {
   if (state.cleared) return;
   if (state.mapIndex === 0 && state.stageInMap === 0 && !state.multiEnemies) return;
+  clearStun();
   stopEnemyAttack();
   clearInterval(attackIntervalId);
   attackIntervalId = null;
