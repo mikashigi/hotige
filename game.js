@@ -525,9 +525,13 @@ function checkMultiComplete() {
   state.multiEnemies = null;
   state.batchFromTicket = false;
   _lastInterval = -1; // 通常速度に戻すため強制リセット
-  elEnemyArea.classList.remove("multi-mode");
-  elMultiGrid.innerHTML = "";
-  if (hadFinal) { gameClear(); return; }
+  // multi-mode解除・グリッドクリアはspawnEnemy()に任せる（マップクリアオーバーレイ中の縮みを防止）
+  if (hadFinal) {
+    elEnemyArea.classList.remove("multi-mode");
+    elMultiGrid.innerHTML = "";
+    gameClear();
+    return;
+  }
   state.stageInMap = 0;
   state.mapIndex++;
   if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
@@ -1023,18 +1027,25 @@ function startNewGamePlus() {
 
 // --- 数値フォーマット（3桁カンマ）---
 function fmt(n) { return Math.floor(n).toLocaleString('ja-JP'); }
+// ショップ用：大きい数字をK/M略称で6文字以内に収める
+function fmtShop(n) {
+  n = Math.floor(n);
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 10000)   return Math.floor(n / 1000) + 'K';
+  return fmt(n);
+}
 
 // --- ショップ ---
 function updateShopDisplay() {
-  elGold.textContent = fmt(state.gold);
+  elGold.textContent = fmtShop(state.gold);
   const hc = healCost();
-  elHealCost.textContent = fmt(hc);
+  elHealCost.textContent = fmtShop(hc);
   elBtnHeal.disabled = state.gold < hc || state.playerHp >= state.playerMaxHp;
   for (const key of Object.keys(SHOP_DEFS)) {
     const cost1  = shopStatCost(key);
     const cost10 = shopStatCostN(key, 10);
-    document.getElementById(`shop-${key}-cost`).textContent    = fmt(cost1);
-    document.getElementById(`shop-${key}-cost-10`).textContent = fmt(cost10);
+    document.getElementById(`shop-${key}-cost`).textContent    = fmtShop(cost1);
+    document.getElementById(`shop-${key}-cost-10`).textContent = fmtShop(cost10);
     document.getElementById(`btn-buy-${key}`).disabled    = state.gold < cost1;
     document.getElementById(`btn-buy-${key}-10`).disabled = state.gold < cost10;
   }
@@ -1589,7 +1600,7 @@ function updateInventoryDisplay() {
 
       const tierBadge = `<span class="tier-badge tier-${tier}">${tier > 0 ? TIER_LABELS[tier] : "T0"}</span>`;
       const nextHint  = next !== undefined
-        ? `<span class="inv-next">→${next}</span>`
+        ? `<span class="inv-next">→<span class="inv-num">${next}</span></span>`
         : `<span class="inv-next max">MAX</span>`;
 
       const curEff  = calcItemEffect(item, obtained);
@@ -1599,7 +1610,7 @@ function updateInventoryDisplay() {
         nextText = `<span class="inv-next-bonus">次(${next}個): +${statStr(item.bonus[tier])}</span>`;
       }
 
-      const obtainedLabel = `<span class="inv-count">所持 ${held}</span><span class="inv-obtained">累計 ${obtained}</span>`;
+      const obtainedLabel = `<span class="inv-count">所持<span class="inv-num">${fmt(held)}</span></span><span class="inv-obtained">累計<span class="inv-num">${fmt(obtained)}</span></span>`;
 
       return `<div class="inv-entry">
         <div class="inv-row">
