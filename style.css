@@ -1836,6 +1836,52 @@ html, body {
 /* =====================
    マップクリア演出
    ===================== */
+/* 連闘 NEXT スウィープ演出 */
+.next-sweep-overlay {
+  position: absolute;
+  left: 0; right: 0;
+  top: 50%; transform: translateY(-50%);
+  height: 68px;
+  z-index: 40;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* 背景と文字を同じコンテナで動かして完全同期 */
+.next-sweep-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(42, 64, 32, 0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  animation: nextSweep 1.0s linear forwards;
+}
+@keyframes nextSweep {
+  0%   { transform: translateX(-120%); opacity: 0;   }
+  12%  { transform: translateX(-8%);   opacity: 1;   }  /* 高速進入 */
+  38%  { transform: translateX(-1%);                 }  /* 減速 */
+  62%  { transform: translateX(9%);                  }  /* 中央で停滞 */
+  88%  { transform: translateX(118%);  opacity: 0.9; }  /* 高速退場 */
+  100% { transform: translateX(128%);  opacity: 0;   }
+}
+.next-sweep-arrows {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(180, 220, 140, 0.65);
+  white-space: nowrap;
+}
+.next-sweep-main {
+  font-size: 1.9rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: #e8f5d8;
+  white-space: nowrap;
+  line-height: 1;
+}
+
 #map-clear-overlay {
   position: absolute;
   inset: 0;
@@ -2484,6 +2530,34 @@ html, body {
   display: flex;
   justify-content: center;
 }
+
+/* 3リール横並び */
+.lk-triple-slot-box {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.lk-triple-slot-box .lk-reel {
+  width: 80px;
+  height: 80px;
+  font-size: 1.7rem;
+}
+
+/* ゾロ目フラッシュ */
+.lk-reel.lk-zoroi-flash {
+  animation: lkZoroiFlash 0.6s ease !important;
+}
+@keyframes lkZoroiFlash {
+  0%   { box-shadow: inset 0 4px 12px rgba(0,0,0,0.75), 0 0  0px rgba(255,220,0,0); }
+  40%  { box-shadow: inset 0 4px 12px rgba(0,0,0,0.75), 0 0 28px 10px rgba(255,220,0,0.7); }
+  100% { box-shadow: inset 0 4px 12px rgba(0,0,0,0.75), 0 0  0px rgba(255,220,0,0); }
+}
+
+/* はずれリール（グレーアウト） */
+.lk-reel.lk-reel-dead {
+  opacity: 0.35;
+  filter: grayscale(0.8);
+}
 .lk-reel {
   width: 136px;
   height: 88px;
@@ -2618,6 +2692,72 @@ html, body {
 .lk-zone-exit-msg{ color: #886600; }
 
 /* 超運試しゾーン */
+/* 超運試し突入オーバーレイ */
+.lk-zone-entry-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 6, 30, 0.88);
+  border-radius: 18px;
+  z-index: 10;
+  pointer-events: none;
+  animation: lkZoneEntryBg 0.3s ease;
+}
+@keyframes lkZoneEntryBg {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.lk-zone-entry-title {
+  font-size: 2.0rem;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  line-height: 1.3;
+  text-align: center;
+  background: linear-gradient(90deg, #ff6060, #ffcc00, #44ddff, #aaff66, #ff6060);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: lkZoneEntryTitle 0.5s cubic-bezier(0.22,0.61,0.36,1), lkZoneEntryRainbow 1s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(180,100,255,0.6));
+}
+@keyframes lkZoneEntryTitle {
+  0%   { transform: scale(0.4) translateY(-30px); opacity: 0; }
+  60%  { transform: scale(1.12) translateY(4px);  opacity: 1; }
+  100% { transform: scale(1.0)  translateY(0); }
+}
+@keyframes lkZoneEntryRainbow {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+.lk-zone-entry-sub {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #cc99ff;
+  letter-spacing: 0.1em;
+  animation: lkZoneEntrySub 0.4s 0.3s ease both;
+}
+@keyframes lkZoneEntrySub {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* lucky-body に position:relative が必要 */
+#lucky-body { position: relative; }
+
+/* 超運試し突入時のモーダル枠フラッシュ */
+.lucky-modal-box.lk-zone-entry-flash {
+  animation: lkZoneEntryBorder 1.8s ease forwards;
+}
+@keyframes lkZoneEntryBorder {
+  0%   { box-shadow: 0 0 0 3px #aa60ff, 0 0 20px 6px rgba(160,80,255,0.6); }
+  30%  { box-shadow: 0 0 0 5px #ffcc00, 0 0 50px 16px rgba(255,200,0,0.7); }
+  60%  { box-shadow: 0 0 0 4px #aa60ff, 0 0 30px 10px rgba(160,80,255,0.5); }
+  100% { box-shadow: 0 0 0 3px #aa60ff, 0 0 16px 5px rgba(160,80,255,0.35); }
+}
+
 .lk-zone-header {
   text-align: center;
   font-size: 1.3rem;
