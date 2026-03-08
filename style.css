@@ -2093,6 +2093,9 @@ html, body {
   flex-direction: column;
   overflow: hidden;
 }
+.book-modal-box {
+  height: 82%;
+}
 
 .modal-header {
   display: flex;
