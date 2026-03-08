@@ -180,8 +180,9 @@ const elInfoCrit        = document.getElementById("info-crit");
 const elGold        = document.getElementById("gold");
 const elBtnHeal     = document.getElementById("btn-heal");
 const elHealCost    = document.getElementById("shop-heal-cost");
-const elEnemyArea   = document.getElementById("enemy-area");
-const elMultiGrid   = document.getElementById("multi-enemy-grid");
+const elEnemyArea      = document.getElementById("enemy-area");
+const elStunTimerText  = document.getElementById("stun-timer-text");
+const elMultiGrid      = document.getElementById("multi-enemy-grid");
 
 // --- ログ ---
 function addLog(msg) {
@@ -200,7 +201,8 @@ function addSystemLog(msg) {
 
 // --- 敵攻撃インターバル ---
 let enemyAttackIntervalId = null;
-let stunTimeoutId = null;
+let stunTimeoutId    = null;
+let stunCountdownId  = null;
 
 function stopEnemyAttack() {
   clearInterval(enemyAttackIntervalId);
@@ -209,7 +211,10 @@ function stopEnemyAttack() {
 
 function clearStun() {
   clearTimeout(stunTimeoutId);
-  stunTimeoutId = null;
+  clearInterval(stunCountdownId);
+  stunTimeoutId   = null;
+  stunCountdownId = null;
+  elEnemyArea.classList.remove("stunned");
 }
 
 // --- 単体敵の攻撃 ---
@@ -1455,8 +1460,18 @@ function useConsumable(id) {
     const dur = def.effect.duration;
     addLog(`${def.icon} ${def.name} 使用！ 敵の攻撃が${dur / 1000}秒間止まった！`);
     updateConsumableDisplay();
+    // オーバーレイ表示 + カウントダウン
+    elEnemyArea.classList.add("stunned");
+    let remaining = Math.round(dur / 1000);
+    elStunTimerText.textContent = `スタン中 ${remaining}s`;
+    stunCountdownId = setInterval(() => {
+      remaining--;
+      elStunTimerText.textContent = `スタン中 ${remaining}s`;
+      if (remaining <= 0) { clearInterval(stunCountdownId); stunCountdownId = null; }
+    }, 1000);
     stunTimeoutId = setTimeout(() => {
       stunTimeoutId = null;
+      elEnemyArea.classList.remove("stunned");
       if (state.multiEnemies && state.multiEnemies.some(e => e.currentHp > 0)) {
         clearInterval(enemyAttackIntervalId);
         enemyAttackIntervalId = setInterval(multiEnemyTick, 2000);
@@ -1480,6 +1495,8 @@ function useConsumable(id) {
       e.currentHp = Math.max(0, e.currentHp - dmg);
       showDamageNumber(fmt(dmg), "crit");
       flashEnemyHit();
+      showExplosionEffect();
+      playBombSound();
       addLog(`${def.icon} ${def.name} 使用！ ${fmt(dmg)} ダメージ！`);
       state.consumables[id]--;
       updateConsumableDisplay();
@@ -1507,6 +1524,8 @@ function useConsumable(id) {
       state.enemyHp -= dmg;
       showDamageNumber(fmt(dmg), "crit");
       flashEnemyHit();
+      showExplosionEffect();
+      playBombSound();
       addLog(`${def.icon} ${def.name} 使用！ ${fmt(dmg)} ダメージ！`);
       updateHpDisplay();
       state.consumables[id]--;
@@ -1578,6 +1597,70 @@ function updateConsumableDisplay() {
   el.innerHTML = entries.length
     ? entries.join('')
     : '<span class="empty-msg">消費アイテムなし</span>';
+}
+
+function playBombSound() {
+  if (soundMuted || audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+
+  // ノイズバースト（爆発の「バン」）
+  const bufLen = audioCtx.sampleRate * 0.25;
+  const buf = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1);
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.setValueAtTime(0.5, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+  noise.connect(noiseGain);
+  noiseGain.connect(masterGain);
+  noise.start(now);
+
+  // 低音ドン（衝撃波）
+  const osc = audioCtx.createOscillator();
+  const oscGain = audioCtx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(120, now);
+  osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+  oscGain.gain.setValueAtTime(0.6, now);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+  osc.connect(oscGain);
+  oscGain.connect(masterGain);
+  osc.onended = () => { osc.disconnect(); oscGain.disconnect(); };
+  osc.start(now);
+  osc.stop(now + 0.3);
+  noise.onended = () => { noise.disconnect(); noiseGain.disconnect(); };
+}
+
+function showExplosionEffect() {
+  const wrap = document.getElementById("enemy-img-wrap") || elEnemyArea;
+  const rect = wrap.getBoundingClientRect();
+  const cx = rect.left + rect.width  / 2;
+  const cy = rect.top  + rect.height / 2;
+
+  // 爆発リング（複数の輪）
+  [0, 80, 160].forEach((delay) => {
+    const ring = document.createElement("div");
+    ring.className = "explosion-ring";
+    ring.style.left  = cx + "px";
+    ring.style.top   = cy + "px";
+    ring.style.animationDelay = delay + "ms";
+    document.body.appendChild(ring);
+    ring.addEventListener("animationend", () => ring.remove());
+  });
+
+  // 火花パーティクル
+  for (let i = 0; i < 8; i++) {
+    const spark = document.createElement("div");
+    spark.className = "explosion-spark";
+    const angle = (i / 8) * 360;
+    spark.style.left  = cx + "px";
+    spark.style.top   = cy + "px";
+    spark.style.setProperty("--angle", angle + "deg");
+    document.body.appendChild(spark);
+    spark.addEventListener("animationend", () => spark.remove());
+  }
 }
 
 function playDefeatSound() {

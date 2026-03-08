@@ -57,7 +57,13 @@
       <!-- 左カラム：敵 + バトルログ + システムログ -->
       <div id="left-col">
         <div id="enemy-area">
-          <img id="enemy-img" src="img/enemy/enemy_slime.png" alt="敵">
+          <div id="enemy-img-wrap">
+            <img id="enemy-img" src="img/enemy/enemy_slime.png" alt="敵">
+            <div id="stun-overlay">
+              <span class="stun-smoke">💨</span>
+              <span id="stun-timer-text"></span>
+            </div>
+          </div>
           <div id="multi-enemy-grid"></div>
           <div id="enemy-name">スライム</div>
           <div id="hp-bar-wrap"><div id="hp-bar"></div></div>

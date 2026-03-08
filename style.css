@@ -378,9 +378,60 @@ html, body {
 }
 
 /* =====================
+   スタンオーバーレイ
+   ===================== */
+#enemy-img-wrap {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  flex-shrink: 0;
+}
+#stun-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+}
+#enemy-area.stunned #stun-overlay { display: flex; }
+
+.stun-smoke {
+  font-size: 1.8rem;
+  animation: stunFloat 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.8));
+}
+#stun-timer-text {
+  font-size: 0.78rem;
+  font-weight: bold;
+  color: #e8f0ff;
+  background: rgba(0, 10, 40, 0.65);
+  padding: 2px 7px;
+  border-radius: 99px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  letter-spacing: 0.04em;
+}
+@keyframes stunFloat {
+  0%, 100% { transform: translateY(0) scale(1);       opacity: 0.85; }
+  50%       { transform: translateY(-6px) scale(1.12); opacity: 1; }
+}
+
+#enemy-area.stunned #enemy-img {
+  filter: brightness(0.55) hue-rotate(180deg) saturate(0.6);
+  animation: stunPulse 1.8s ease-in-out infinite;
+}
+@keyframes stunPulse {
+  0%, 100% { opacity: 0.55; }
+  50%       { opacity: 0.80; }
+}
+
+/* =====================
    一括討伐モード
    ===================== */
-#enemy-area.multi-mode #enemy-img { display: none; }
+#enemy-area.multi-mode #enemy-img-wrap { display: none; }
 
 #multi-enemy-grid {
   display: none;
@@ -541,6 +592,40 @@ html, body {
   0%   { opacity: 1; transform: translateY(0) scale(1); }
   15%  { transform: translateY(-8px) scale(1.15); }
   100% { opacity: 0; transform: translateY(-62px) scale(0.9); }
+}
+
+/* 爆弾草エフェクト */
+.explosion-ring {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 4px solid #ff8c00;
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+  z-index: 9999;
+  animation: explosionRing 0.5s ease-out forwards;
+}
+@keyframes explosionRing {
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 1;   border-color: #fff700; }
+  40%  { border-color: #ff6600; }
+  100% { transform: translate(-50%, -50%) scale(5.5); opacity: 0;   border-color: #ff2200; }
+}
+
+.explosion-spark {
+  position: fixed;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffcc00;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 9999;
+  animation: explosionSpark 0.45s ease-out forwards;
+}
+@keyframes explosionSpark {
+  0%   { transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0)   scale(1);   opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(var(--angle)) translateY(-60px) scale(0); opacity: 0; }
 }
 
 #enemy-name {
