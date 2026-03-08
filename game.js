@@ -898,20 +898,49 @@ function gameClear() {
 }
 
 function _showClearPanel() {
-  const panel = document.getElementById('clear-panel');
-  if (!panel) return;
+  const overlay = document.getElementById('game-clear-overlay');
+  if (!overlay) return;
   const cp = state.clearPoints;
-  panel.style.display = 'flex';
-  panel.innerHTML = `
-    <div class="ngp-title">🏆 クリア${cp > 0 ? ` ${cp + 1}周目` : ''}達成！</div>
-    <div class="ngp-pts">クリアポイント <span class="ngp-pts-val">${cp}</span> → <span class="ngp-pts-new">${cp + 1}</span></div>
-    <button class="ngp-btn" onclick="startNewGamePlus()">🔄 New Game+</button>
-    <div class="ngp-hint">図鑑・アイテムTier・実績を引き継ぎ<br>最初からスタート</div>
-  `;
+
+  // Stars row
+  const starsRow = overlay.querySelector('.gc-stars-row');
+  if (starsRow) starsRow.textContent = '⭐ ✨ 🌟 ✨ ⭐';
+
+  // Clear points row
+  const cpRow = document.getElementById('gc-cp-row');
+  if (cpRow) {
+    if (cp >= 0) {
+      cpRow.innerHTML = `<span class="gc-cp-badge">🏆 ${cp > 0 ? `${cp}周目 → ` : ''}<span class="gc-cp-new">${cp + 1}周目</span></span>`;
+      cpRow.style.display = '';
+    } else {
+      cpRow.style.display = 'none';
+    }
+  }
+
+  // Falling particles
+  const gcParticles = document.getElementById('gc-particles');
+  if (gcParticles) {
+    gcParticles.innerHTML = '';
+    const symbols = ['🌟','✨','💫','⭐','🎊','🎉','💖','🌈','🍀','🎀'];
+    for (let i = 0; i < 35; i++) {
+      const el = document.createElement('span');
+      el.className = 'gc-particle';
+      el.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      el.style.left = Math.random() * 100 + '%';
+      el.style.fontSize = (0.8 + Math.random() * 1.2) + 'rem';
+      el.style.animationDuration = (2.5 + Math.random() * 4) + 's';
+      el.style.animationDelay = (Math.random() * 5) + 's';
+      gcParticles.appendChild(el);
+    }
+  }
+
+  overlay.style.display = 'flex';
 }
 
 function startNewGamePlus() {
   if (!state.cleared) return;
+  const overlay = document.getElementById('game-clear-overlay');
+  if (overlay) overlay.style.display = 'none';
   const newCp = state.clearPoints + 1;
   // アイテム個数をTier閾値にスナップ（個数はリセット、Tierボーナスのみ維持）
   const snappedInventory = {};

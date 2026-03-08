@@ -12,6 +12,19 @@
     <div id="game-bg"></div>
     <div id="stage-bg"></div>
 
+    <!-- ゲームクリア演出 -->
+    <div id="game-clear-overlay" style="display:none">
+      <div id="gc-particles"></div>
+      <div id="gc-box">
+        <div class="gc-stars-row"></div>
+        <div id="gc-title">★ GAME CLEAR ★</div>
+        <div id="gc-sub">おめでとうございます！🎉</div>
+        <div id="gc-cp-row"></div>
+        <button id="gc-ngp-btn" onclick="startNewGamePlus()">🔄 New Game+</button>
+        <div id="gc-hint">図鑑・アイテムTier・実績を引き継ぎ<br>最初からスタート</div>
+      </div>
+    </div>
+
     <!-- デス演出 -->
     <div id="death-overlay">
       <div id="death-box">

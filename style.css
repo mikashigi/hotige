@@ -240,49 +240,8 @@ html, body {
   to   { color: #c07000; text-shadow: 0 0 8px rgba(200,120,0,0.6), 0 1px 0 rgba(255,255,255,0.5); }
 }
 
-/* New Game+ クリアパネル */
-#clear-panel {
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 8px 8px;
-  background: linear-gradient(160deg, #1a1000 0%, #2a1800 100%);
-  border: 2px solid #a07000;
-  border-radius: 12px;
-  margin-top: 6px;
-}
-.ngp-title {
-  font-size: 0.9rem;
-  font-weight: bold;
-  color: #ffe840;
-  letter-spacing: 0.06em;
-  text-shadow: 0 0 8px rgba(255,210,0,0.7);
-}
-.ngp-pts {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-.ngp-pts-val  { color: #aaa; }
-.ngp-pts-new  { color: #ffe840; font-weight: bold; }
-.ngp-btn {
-  margin-top: 2px;
-  padding: 5px 18px;
-  background: linear-gradient(135deg, #c07800, #7a4000);
-  color: #fff8e0;
-  border: 1px solid #ffe040;
-  border-radius: 8px;
-  font-size: 0.82rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: filter 0.15s;
-}
-.ngp-btn:hover { filter: brightness(1.2); }
-.ngp-hint {
-  font-size: 0.65rem;
-  color: #887755;
-  text-align: center;
-  line-height: 1.4;
-}
+/* New Game+ クリアパネル（サブ表示、通常は hidden） */
+#clear-panel { display: none !important; }
 
 /* クリアポイント（周回数）表示 */
 #clear-points-row {
@@ -1596,6 +1555,195 @@ html, body {
   height: 22px;
   object-fit: contain;
   image-rendering: pixelated;
+}
+
+/* =====================
+   ゲームクリア演出
+   ===================== */
+#game-clear-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg,
+    rgba(255,220,240,0.93) 0%,
+    rgba(230,210,255,0.93) 50%,
+    rgba(210,235,255,0.93) 100%);
+  border-radius: 14px;
+  overflow: hidden;
+  animation: gcBgBreath 4s ease-in-out infinite alternate;
+}
+@keyframes gcBgBreath {
+  from { background: linear-gradient(135deg, rgba(255,220,240,0.93) 0%, rgba(230,210,255,0.93) 50%, rgba(210,235,255,0.93) 100%); }
+  to   { background: linear-gradient(135deg, rgba(255,240,210,0.93) 0%, rgba(255,220,245,0.93) 50%, rgba(225,215,255,0.93) 100%); }
+}
+
+/* カード本体 */
+#gc-box {
+  position: relative;
+  background: linear-gradient(140deg, #fffafd 0%, #f8f0ff 55%, #f0faff 100%);
+  border: 3px solid #e8a8dc;
+  border-radius: 30px;
+  padding: 30px 44px 26px;
+  text-align: center;
+  overflow: hidden;
+  box-shadow:
+    0 20px 60px rgba(180, 80, 200, 0.25),
+    0 4px 20px rgba(0,0,0,0.08),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  min-width: 260px;
+  animation: gcBoxIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes gcBoxIn {
+  0%   { transform: scale(0.4) translateY(40px); opacity: 0; }
+  65%  { transform: scale(1.06) translateY(-6px); opacity: 1; }
+  100% { transform: scale(1)   translateY(0);    opacity: 1; }
+}
+
+/* シマー */
+#gc-box::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg,
+    transparent 20%,
+    rgba(255,255,255,0.65) 50%,
+    transparent 80%);
+  background-size: 300% 100%;
+  animation: gcShimmer 3s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+@keyframes gcShimmer {
+  0%, 100% { background-position: -100% 0; }
+  50%      { background-position:  200% 0; }
+}
+
+/* 星ライン */
+.gc-stars-row {
+  font-size: 1.3rem;
+  letter-spacing: 0.4em;
+  margin-bottom: 6px;
+  animation: gcStarsFloat 2s ease-in-out infinite alternate;
+  position: relative;
+}
+@keyframes gcStarsFloat {
+  from { transform: translateY(0);   filter: hue-rotate(0deg); }
+  to   { transform: translateY(-4px); filter: hue-rotate(60deg); }
+}
+
+/* タイトル */
+#gc-title {
+  font-size: 1.75rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  background: linear-gradient(90deg,
+    #ff6090, #ff9030, #f0d020,
+    #40c870, #50a0ff, #c060ff, #ff6090);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gcRainbow 2.2s linear infinite, gcTitlePop 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both;
+  position: relative;
+  white-space: nowrap;
+}
+@keyframes gcRainbow {
+  from { background-position: 0%   50%; }
+  to   { background-position: 300% 50%; }
+}
+@keyframes gcTitlePop {
+  from { transform: scale(0.5); opacity: 0; }
+  70%  { transform: scale(1.08); }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* サブ */
+#gc-sub {
+  font-size: 0.88rem;
+  color: #a060c8;
+  font-weight: bold;
+  margin: 8px 0 14px;
+  animation: gcSlideUp 0.5s ease 0.3s both;
+}
+
+/* クリアポイント */
+#gc-cp-row {
+  margin-bottom: 16px;
+  animation: gcSlideUp 0.5s ease 0.4s both;
+}
+.gc-cp-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #ffb830, #ff7000);
+  color: #fff;
+  border-radius: 20px;
+  padding: 4px 16px;
+  font-weight: bold;
+  font-size: 0.82rem;
+  box-shadow: 0 3px 10px rgba(255,140,0,0.4);
+  letter-spacing: 0.04em;
+}
+.gc-cp-new {
+  color: #ff8800;
+  font-weight: bold;
+  font-size: 1.05em;
+}
+
+/* NG+ボタン */
+#gc-ngp-btn {
+  background: linear-gradient(135deg, #ff70c0, #c060ef, #70a0ff);
+  background-size: 200% 100%;
+  color: #fff;
+  border: none;
+  border-radius: 26px;
+  padding: 10px 30px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 5px 18px rgba(180,80,220,0.45);
+  letter-spacing: 0.06em;
+  animation: gcBtnIn 0.5s cubic-bezier(0.22,1,0.36,1) 0.5s both,
+             gcBtnGlow 2s ease-in-out infinite alternate;
+  transition: transform 0.15s, filter 0.15s;
+  position: relative;
+}
+#gc-ngp-btn:hover { transform: scale(1.07); filter: brightness(1.12); }
+@keyframes gcBtnIn {
+  from { transform: scale(0); opacity: 0; }
+  70%  { transform: scale(1.1); }
+  to   { transform: scale(1); opacity: 1; }
+}
+@keyframes gcBtnGlow {
+  from { box-shadow: 0 5px 18px rgba(180,80,220,0.4); }
+  to   { box-shadow: 0 5px 28px rgba(180,80,220,0.75); }
+}
+
+#gc-hint {
+  font-size: 0.63rem;
+  color: #b090d0;
+  margin-top: 10px;
+  line-height: 1.6;
+  animation: gcSlideUp 0.5s ease 0.65s both;
+}
+
+@keyframes gcSlideUp {
+  from { transform: translateY(14px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* 降り注ぐパーティクル */
+.gc-particle {
+  position: absolute;
+  pointer-events: none;
+  font-size: 1.1rem;
+  animation: gcFall linear forwards;
+}
+@keyframes gcFall {
+  0%   { transform: translateY(-30px) rotate(0deg)   scale(1);   opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(110%)  rotate(540deg) scale(0.6); opacity: 0; }
 }
 
 /* =====================
