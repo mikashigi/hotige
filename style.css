@@ -240,6 +240,69 @@ html, body {
   to   { color: #c07000; text-shadow: 0 0 8px rgba(200,120,0,0.6), 0 1px 0 rgba(255,255,255,0.5); }
 }
 
+/* New Game+ クリアパネル */
+#clear-panel {
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 8px 8px;
+  background: linear-gradient(160deg, #1a1000 0%, #2a1800 100%);
+  border: 2px solid #a07000;
+  border-radius: 12px;
+  margin-top: 6px;
+}
+.ngp-title {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #ffe840;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 8px rgba(255,210,0,0.7);
+}
+.ngp-pts {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.ngp-pts-val  { color: #aaa; }
+.ngp-pts-new  { color: #ffe840; font-weight: bold; }
+.ngp-btn {
+  margin-top: 2px;
+  padding: 5px 18px;
+  background: linear-gradient(135deg, #c07800, #7a4000);
+  color: #fff8e0;
+  border: 1px solid #ffe040;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.ngp-btn:hover { filter: brightness(1.2); }
+.ngp-hint {
+  font-size: 0.65rem;
+  color: #887755;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* クリアポイント（周回数）表示 */
+#clear-points-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0 1px;
+  border-top: 1px solid var(--border-light);
+  margin-top: 2px;
+}
+.cp-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.cp-val {
+  font-size: 0.82rem;
+  font-weight: bold;
+  color: #c07800;
+}
+
 /* ステージグリッド */
 #map-icon {
   width: 18px;

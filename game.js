@@ -126,6 +126,7 @@ const state = {
   consumables:     {},
   pendingBatch:    false, // 一括チケット使用中フラグ（次マップ到達で発動、死亡で返却）
   batchFromTicket: false, // 一括討伐がチケット起動かどうか（死亡時に返却判定）
+  clearPoints:     0,    // ゲームクリア周回数
 };
 
 // --- 定数 ---
@@ -747,8 +748,8 @@ function tick() {
   const effectiveHit = Math.max(0, s.hitRate - state.currentEnemy.evasion);
   if (rand > effectiveHit) {
     if (state.currentEnemy.evasion > 0 && rand <= s.hitRate) {
-      addLog(`${state.currentEnemy.name} はかわした！`);
-      showDamageNumber("回避", "miss");
+      addLog("ミス！");
+      showDamageNumber("MISS", "miss");
     } else {
       addLog("ミス！");
       showDamageNumber("MISS", "miss");
@@ -788,8 +789,8 @@ function tickMulti(s) {
     const effectiveHit = Math.max(0, s.hitRate - (e.evasion || 0));
     if (rand > effectiveHit) {
       if ((e.evasion || 0) > 0 && rand <= s.hitRate) {
-        addLog(`${e.name} はかわした！`);
-        showDamageNumber("回避", "miss");
+        addLog("ミス！");
+        showDamageNumber("MISS", "miss");
       } else {
         addLog("ミス！");
         showDamageNumber("MISS", "miss");
@@ -892,6 +893,67 @@ function gameClear() {
   });
   addLog("魔王を倒した！ 世界に平和が訪れた！");
   addSystemLog("★★★ ゲームクリア！ おめでとうございます！ ★★★");
+  _showClearPanel();
+}
+
+function _showClearPanel() {
+  const panel = document.getElementById('clear-panel');
+  if (!panel) return;
+  const cp = state.clearPoints;
+  panel.style.display = 'flex';
+  panel.innerHTML = `
+    <div class="ngp-title">🏆 クリア${cp > 0 ? ` ${cp + 1}周目` : ''}達成！</div>
+    <div class="ngp-pts">クリアポイント <span class="ngp-pts-val">${cp}</span> → <span class="ngp-pts-new">${cp + 1}</span></div>
+    <button class="ngp-btn" onclick="startNewGamePlus()">🔄 New Game+</button>
+    <div class="ngp-hint">図鑑・アイテムTier・実績を引き継ぎ<br>最初からスタート</div>
+  `;
+}
+
+function startNewGamePlus() {
+  if (!state.cleared) return;
+  const newCp = state.clearPoints + 1;
+  // アイテム個数をTier閾値にスナップ（個数はリセット、Tierボーナスのみ維持）
+  const snappedInventory = {};
+  for (const [id, count] of Object.entries(state.inventory)) {
+    const tier = getItemTier(count);
+    snappedInventory[id] = BONUS_THRESHOLDS[tier - 1] ?? 0;
+  }
+  // 引き継ぐデータを保存
+  const carry = {
+    inventory:       snappedInventory,
+    itemsObtained:   state.itemsObtained,
+    monsterKills:    state.monsterKills,
+    achievements:    state.achievements,
+    clearPoints:     newCp,
+    totalGoldEarned: state.totalGoldEarned,
+    totalRefines:    state.totalRefines,
+    totalDeaths:     state.totalDeaths,
+    totalShopBuys:   state.totalShopBuys,
+    rareKills:       state.rareKills,
+    mapsCleared:     state.mapsCleared,
+  };
+  // state をリセット
+  Object.assign(state, {
+    mapIndex:      0,
+    stageInMap:    0,
+    attack:        1,
+    gold:          0,
+    enemyHp:       0,
+    enemyMaxHp:    0,
+    playerHp:      50,
+    playerMaxHp:   50,
+    cleared:       false,
+    shopLevels:    { vit: 0, str: 0, int: 0, agi: 0, dex: 0, luk: 0 },
+    currentEnemy:  null,
+    multiEnemies:  null,
+    refine:        null,
+    consumables:   {},
+    pendingBatch:  false,
+    batchFromTicket: false,
+  });
+  Object.assign(state, carry);
+  saveData();
+  location.reload();
 }
 
 // --- 数値フォーマット（3桁カンマ）---
@@ -1384,6 +1446,17 @@ function updateStatsDisplay() {
   elInfoSpd.textContent  = (1000 / s.attackInterval).toFixed(1);
   elInfoCrit.textContent = Math.round(s.critChance * 100);
 
+  // クリアポイント表示
+  const cpRow = document.getElementById('clear-points-row');
+  if (cpRow) {
+    if (state.clearPoints > 0) {
+      cpRow.style.display = '';
+      cpRow.innerHTML = `<span class="cp-label">🏆 周回</span><span class="cp-val">${state.clearPoints}</span>`;
+    } else {
+      cpRow.style.display = 'none';
+    }
+  }
+
   resetAttackInterval(s);
 }
 
@@ -1792,6 +1865,7 @@ function saveData() {
     consumables:     state.consumables,
     pendingBatch:    state.pendingBatch,
     batchFromTicket: state.batchFromTicket,
+    clearPoints:     state.clearPoints,
     soundVolume,
     soundMuted,
   }));
@@ -1836,6 +1910,7 @@ function loadGame() {
   state.consumables     = data.consumables     || {};
   state.pendingBatch    = data.pendingBatch    || false;
   state.batchFromTicket = data.batchFromTicket || false;
+  state.clearPoints     = data.clearPoints     ?? 0;
   // 旧セーブの batch_ticket がステータスアイテムとして保存されていた場合の移行
   if (state.inventory['batch_ticket']) {
     state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + state.inventory['batch_ticket'];
@@ -2118,7 +2193,7 @@ const LUCKY_CONFIG = {
   superChance:   0.08,   // ← ここを変える (0.0〜jackpotChance)
 
   // ── 超運試しのループ確率 ──────────────────────────────────
-  zoneLoopChance: 0.90,  // ← ここを変える (0.0〜1.0)
+  zoneLoopChance: 0.80,  // ← ここを変える (0.0〜1.0)
 
   // ── 初期G 範囲 ────────────────────────────────────────────
   baseMin:  50,           // ← 最小値
