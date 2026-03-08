@@ -1172,7 +1172,9 @@ function completeOneRefine() {
     consumeRefineInputs(recipe);
     state.refine.elapsed   = 0;
     state.refine.countLeft = next;
-    updateRefineDisplay();
+    // 継続中は DOM 再構築せずカウントのみ更新（クリック競合防止）
+    const countEl = document.querySelector('.refine-active-count');
+    if (countEl) countEl.textContent = next === -1 ? '∞' : `残り ${next}回`;
     updateInventoryDisplay();
   } else {
     if (next !== 0) {
@@ -1233,7 +1235,7 @@ function updateRefineDisplay() {
       const have   = state.inventory[inp.itemId] || 0;
       const enough = have >= inp.count;
       const name   = ITEM_MAP[inp.itemId]?.name ?? inp.itemId;
-      return `<span class="refine-chip${enough ? "" : " missing"}">${name}×${inp.count}<span class="refine-chip-have">(${have})</span></span>`;
+      return `<span class="refine-chip${enough ? "" : " missing"}">${name}×${inp.count}<span class="refine-chip-have">(<span class="refine-num">${have}</span>)</span></span>`;
     }).join("");
 
     const outName = ITEM_MAP[recipe.output.itemId]?.name ?? recipe.output.itemId;
@@ -2158,7 +2160,8 @@ function renderBook() {
 function renderItemBook() {
   const TIER_LABELS = ["T0", "T1", "T2", "T3"];
   const cards = ITEMS.map(item => {
-    const count  = state.inventory[item.id] || 0;
+    const held   = state.inventory[item.id] || 0;
+    const count  = state.itemsObtained[item.id] || held; // 累計（全周回）
     const tier   = getItemTier(count);
     const unseen = count === 0;
 
