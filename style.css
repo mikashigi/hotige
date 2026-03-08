@@ -457,7 +457,7 @@ html, body {
 #enemy-img-wrap {
   position: relative;
   width: 110px;
-  height: 110px;
+  height: 126px; /* 連闘カード高さ（110px画像＋テキスト行）に統一 */
   flex-shrink: 0;
 }
 #stun-overlay {
@@ -771,6 +771,25 @@ html, body {
   align-items: center;
   gap: 6px;
 }
+#gold-bar {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: linear-gradient(135deg, #fff8c0, #ffe040);
+  border: 1px solid #c89800;
+  border-radius: 8px;
+  padding: 1px 6px;
+  color: #6a4800;
+  font-size: 0.68rem;
+  font-weight: bold;
+  white-space: nowrap;
+}
+#gold {
+  display: inline-block;
+  width: 72px;
+  text-align: right;
+}
 
 /* =====================
    タブナビゲーション
@@ -888,14 +907,8 @@ html, body {
   animation: tabSlideIn 0.18s ease;
 }
 
-/* ショップタブ内のゴールド表示 */
-#shop-gold-header {
-  padding: 5px 10px 3px;
-  display: flex;
-  justify-content: flex-end;
-  border-bottom: 1px solid var(--border-light);
-  flex-shrink: 0;
-}
+/* ショップタブ内のゴールド表示（ステータス枠に移動したため非表示） */
+#shop-gold-header { display: none; }
 
 /* =====================
    共通パネル / ログ
@@ -1147,6 +1160,7 @@ html, body {
   flex-direction: column;
   gap: 1px;
 }
+.consumable-name-row { display: flex; align-items: center; gap: 5px; }
 .consumable-name  { font-size: 0.82rem; font-weight: bold; color: #5a3e8a; }
 .consumable-count { font-size: 0.75rem; color: var(--text-muted); }
 .consumable-desc  { font-size: 0.7rem;  color: var(--text-muted); }

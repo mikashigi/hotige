@@ -1471,14 +1471,13 @@ function computePlayerStats() {
 
   const rawInterval    = 1000 - raw.agi * 5;
   const normInterval   = Math.max(300, rawInterval);
+  // 速度上限(AGI=140)到達後、AGI999で20HITに線形スケール
   const normCount      = rawInterval < 300
-    ? Math.min(20, Math.max(1, Math.floor(300 / Math.max(rawInterval, 1))))
+    ? Math.min(20, 1 + Math.floor((raw.agi - 140) * 19 / 859))
     : 1;
-  const multiRawInt    = Math.floor(rawInterval / 3);
-  const multiInterval  = Math.max(100, multiRawInt);
-  const multiCount     = multiRawInt < 100
-    ? Math.min(20, Math.max(1, Math.floor(100 / Math.max(multiRawInt, 1))))
-    : 1;
+  const multiInterval  = Math.max(100, Math.floor(normInterval / 3));
+  // 連闘マルチアタック: AGI0→1HIT、AGI999→20HIT 線形
+  const multiCount     = Math.min(20, Math.max(1, 1 + Math.floor(raw.agi * 19 / 999)));
 
   _cachedStats = {
     ...raw,
@@ -1666,6 +1665,7 @@ function _grantConsumable(id) {
 
 function useConsumable(id) {
   if ((state.consumables[id] || 0) <= 0 || state.cleared) return;
+  if (state.multiEnemies !== null) return; // 連闘中は全アイテム使用不可
   const def = CONSUMABLE_MAP[id];
   if (!def) return;
 
@@ -1794,11 +1794,12 @@ function updateConsumableDisplay() {
       if (isPending) {
         btnLabel = "発動中";
         disabled = "disabled";
+      } else if (inMulti) {
+        btnLabel = "連闘中";
+        disabled = "disabled";
       } else if (state.cleared) {
         disabled = "disabled";
-      } else if (c.effect.type === "damage" && (inMulti || !hasEnemy)) {
-        disabled = "disabled";
-      } else if (c.effect.type === "batch_mode" && inMulti) {
+      } else if (c.effect.type === "damage" && !hasEnemy) {
         disabled = "disabled";
       } else if (c.effect.type === "stun" && (stunTimeoutId !== null || !hasEnemy)) {
         if (stunTimeoutId !== null) btnLabel = "発動中";
@@ -1812,9 +1813,11 @@ function updateConsumableDisplay() {
         : '';
       return `<div class="consumable-entry${isPending ? " pending" : ""}">
         <div class="consumable-info">
-          <span class="consumable-name">${c.icon} ${c.name}</span>
+          <div class="consumable-name-row">
+            <span class="consumable-name">${c.icon} ${c.name}</span>
+            ${pendingBadge}
+          </div>
           <span class="consumable-count">×${count}</span>
-          ${pendingBadge}
           <span class="consumable-desc">${c.desc}</span>
         </div>
         <div class="consumable-btn-group">
