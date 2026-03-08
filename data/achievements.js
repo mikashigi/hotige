@@ -24,11 +24,11 @@ const ACHIEVEMENTS = [
 
   // --- アイテム ---
   { id: "first_item",   icon: "📦", name: "初入手",        desc: "アイテムを初めて入手した",
-    check: s => Object.values(s.inventory).some(v => v >= 1) },
-  { id: "tier1",        icon: "⭐", name: "コレクター",    desc: "アイテムをTier1（100個）にした",
-    check: s => Object.values(s.inventory).some(v => v >= 100) },
-  { id: "tier3",        icon: "🌟", name: "蒐集の極み",    desc: "アイテムをTier3（999個）にした",
-    check: s => Object.values(s.inventory).some(v => v >= 999) },
+    check: s => Object.values(s.itemsObtained || s.inventory).some(v => v >= 1) },
+  { id: "tier1",        icon: "⭐", name: "コレクター",    desc: "アイテムをTier1（累計100個）にした",
+    check: s => Object.values(s.itemsObtained || s.inventory).some(v => v >= 100) },
+  { id: "tier3",        icon: "🌟", name: "蒐集の極み",    desc: "アイテムをTier3（累計999個）にした",
+    check: s => Object.values(s.itemsObtained || s.inventory).some(v => v >= 999) },
 
   // --- 精製 ---
   { id: "first_refine", icon: "⚗", name: "錬金術師",       desc: "初めて精製を完了した",

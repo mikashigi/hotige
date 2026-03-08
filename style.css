@@ -56,6 +56,10 @@
   padding: 0;
 }
 
+button, input, select, textarea {
+  font-family: inherit;
+}
+
 :root {
   --bg:            #dff0d0;
   --game-bg:       #eaf7dc;
@@ -905,8 +909,9 @@ html, body {
 }
 .inv-entry:last-child { border-bottom: none; padding-bottom: 0; }
 
-.inv-name  { flex: 1; color: #7a5c00; font-weight: bold; }
-.inv-count { color: var(--text-muted); min-width: 32px; text-align: right; }
+.inv-name     { flex: 1; color: #7a5c00; font-weight: bold; }
+.inv-count    { color: var(--text-muted); min-width: 32px; text-align: right; }
+.inv-obtained { color: var(--text-muted); font-size: 0.7rem; text-align: right; opacity: 0.7; }
 
 .inv-detail {
   display: flex;
@@ -1035,18 +1040,28 @@ html, body {
 }
 
 .shop-btn {
-  padding: 5px 8px;
+  padding: 5px 10px;
   background: var(--yellow);
   border: 1.5px solid var(--yellow-dark);
   border-radius: 8px;
   font-size: 0.82rem;
   font-weight: bold;
+  font-family: 'GameFont', sans-serif;
+  font-variant-numeric: tabular-nums;
   color: #7a5a00;
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s;
   flex-shrink: 0;
+  text-align: center;
 }
+/* ×1 ボタン */
+.shop-btn-group .shop-btn:first-child { min-width: 76px; }
+/* ×10 ボタン */
+.shop-btn-group .shop-btn:last-child  { min-width: 96px; }
+/* 単独ボタン（HP回復など）*/
+.shop-btn-group .shop-btn:only-child,
+.shop-row > .shop-btn { min-width: unset; }
 
 .shop-btn:hover:not(:disabled) {
   background: var(--yellow-dark);

@@ -109,6 +109,7 @@ const state = {
   playerHp:        50,
   playerMaxHp:     50,
   inventory:       {},
+  itemsObtained:   {},
   cleared:         false,
   shopLevels:      { vit: 0, str: 0, int: 0, agi: 0, dex: 0, luk: 0 },
   currentEnemy:    null,
@@ -436,6 +437,8 @@ function checkMultiComplete() {
   if (!state.multiEnemies) return;
   if (state.multiEnemies.some(e => e.currentHp > 0)) return;
   stopEnemyAttack();
+  clearInterval(attackIntervalId);
+  attackIntervalId = null;
   const hadFinal = state.multiEnemies.some(e => e.isFinal && e.isBoss);
   state.multiEnemies = null;
   _lastInterval = -1; // 通常速度に戻すため強制リセット
@@ -519,6 +522,7 @@ function showMapClearOverlay(newMapName) {
       overlay.style.display = 'none';
       overlay.classList.remove('active', 'exit');
       spawnEnemy();
+      updateStatsDisplay();
     }, 210);
   }, 1100);
 }
@@ -647,7 +651,7 @@ function tick() {
     state.gold += earned;
     state.totalGoldEarned += earned;
     if (defeatedEnemy.isRare) state.rareKills++;
-    addLog(`${defeatedEnemy.name} を倒した！ +${earned}G`);
+    addLog(`${defeatedEnemy.name} を倒した！ +${fmt(earned)}G`);
     playDefeatSound();
     updateShopDisplay();
     rollDrops(defeatedEnemy);
@@ -664,6 +668,9 @@ function tick() {
       state.mapsCleared++;
       addSystemLog(`★ マップクリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
       checkAchievements();
+      clearInterval(attackIntervalId);
+      attackIntervalId = null;
+      _lastInterval = -1;
       showMapClearOverlay(MAP_DEFS[state.mapIndex].name);
       return;
     }
@@ -690,7 +697,7 @@ function tickMulti(s) {
   rollDrops(e);
   recordKill(state.mapIndex, e.name);
   checkAchievements();
-  addLog(`${e.name} 撃破！ +${earned}G`);
+  addLog(`${e.name} 撃破！ +${fmt(earned)}G`);
   playDefeatSound();
   updateShopDisplay();
 
@@ -751,17 +758,20 @@ function gameClear() {
   addSystemLog("★★★ ゲームクリア！ おめでとうございます！ ★★★");
 }
 
+// --- 数値フォーマット（3桁カンマ）---
+function fmt(n) { return Math.floor(n).toLocaleString('ja-JP'); }
+
 // --- ショップ ---
 function updateShopDisplay() {
-  elGold.textContent = state.gold;
+  elGold.textContent = fmt(state.gold);
   const hc = healCost();
-  elHealCost.textContent = hc;
+  elHealCost.textContent = fmt(hc);
   elBtnHeal.disabled = state.gold < hc || state.playerHp >= state.playerMaxHp;
   for (const key of Object.keys(SHOP_DEFS)) {
     const cost1  = shopStatCost(key);
     const cost10 = shopStatCostN(key, 10);
-    document.getElementById(`shop-${key}-cost`).textContent    = cost1;
-    document.getElementById(`shop-${key}-cost-10`).textContent = cost10;
+    document.getElementById(`shop-${key}-cost`).textContent    = fmt(cost1);
+    document.getElementById(`shop-${key}-cost-10`).textContent = fmt(cost10);
     document.getElementById(`btn-buy-${key}`).disabled    = state.gold < cost1;
     document.getElementById(`btn-buy-${key}-10`).disabled = state.gold < cost10;
   }
@@ -789,7 +799,7 @@ function buyShopStat(key, n = 1) {
   checkAchievements();
   const def   = SHOP_DEFS[key];
   const total = state.shopLevels[key] * def.amount;
-  addSystemLog(`${key.toUpperCase()}×${n}強化！ ${def.stat.toUpperCase()}が合計+${total} (次回: ${shopStatCost(key)}G)`);
+  addSystemLog(`${key.toUpperCase()}×${n}強化！ ${def.stat.toUpperCase()}が合計+${total} (次回: ${fmt(shopStatCost(key))}G)`);
 }
 
 // --- 精製 ---
@@ -858,12 +868,13 @@ function completeOneRefine() {
 
   // 成果物を追加
   const outId = recipe.output.itemId;
-  const prevCount = state.inventory[outId] || 0;
-  state.inventory[outId] = prevCount + recipe.output.count;
-  const newCount = state.inventory[outId];
-  const prevTier = getItemTier(prevCount);
-  const newTier  = getItemTier(newCount);
-  addSystemLog(`${recipe.name} 完成！ ${ITEM_MAP[outId]?.name ?? outId} ×${newCount}`);
+  const prevObtained = state.itemsObtained[outId] || 0;
+  state.itemsObtained[outId] = prevObtained + recipe.output.count;
+  state.inventory[outId] = (state.inventory[outId] || 0) + recipe.output.count;
+  const newObtained = state.itemsObtained[outId];
+  const prevTier = getItemTier(prevObtained);
+  const newTier  = getItemTier(newObtained);
+  addSystemLog(`${recipe.name} 完成！ ${ITEM_MAP[outId]?.name ?? outId} 累計×${newObtained}`);
   if (newTier > prevTier) addSystemLog(`★ ${ITEM_MAP[outId]?.name} Tier${newTier} 解放！`);
   state.totalRefines++;
   checkAchievements();
@@ -1126,14 +1137,25 @@ function computePlayerStats() {
   if (_cachedStats) return _cachedStats;
   const raw = { str: 0, vit: 0, int: 0, dex: 0, agi: 0, luk: 0 };
 
-  for (const [itemId, count] of Object.entries(state.inventory)) {
+  // 所持・累計のどちらかがあるアイテムを列挙
+  const seenItems = new Set([
+    ...Object.keys(state.inventory).filter(id => (state.inventory[id] || 0) > 0),
+    ...Object.keys(state.itemsObtained).filter(id => (state.itemsObtained[id] || 0) > 0),
+  ]);
+  for (const itemId of seenItems) {
     const item = ITEM_MAP[itemId];
     if (!item) continue;
-    for (const s of Object.keys(raw)) raw[s] += item[s];
+    const held     = state.inventory[itemId]     || 0;
+    const obtained = state.itemsObtained[itemId] || held; // 旧セーブ互換
+    // 基本ステータス: 現在所持している場合のみ
+    if (held > 0) {
+      for (const s of Object.keys(raw)) raw[s] += item[s];
+    }
+    // ボーナス: 累計取得数で判定
     if (item.bonus) {
-      item.bonus.forEach((tier, i) => {
-        if (count >= BONUS_THRESHOLDS[i]) {
-          for (const s of Object.keys(raw)) raw[s] += (tier[s] || 0);
+      item.bonus.forEach((bonusTier, i) => {
+        if (obtained >= BONUS_THRESHOLDS[i]) {
+          for (const s of Object.keys(raw)) raw[s] += (bonusTier[s] || 0);
         }
       });
     }
@@ -1221,7 +1243,8 @@ function updateStatsDisplay() {
   resetAttackInterval(s);
 }
 
-function calcItemEffect(item, count) {
+function calcItemEffect(item, obtained) {
+  const count = obtained; // 累計取得数でボーナス判定
   const eff = { str: item.str, vit: item.vit, int: item.int,
                 dex: item.dex, agi: item.agi, luk: item.luk };
   if (item.bonus) {
@@ -1244,34 +1267,37 @@ function statStr(obj, prefix = "") {
 function updateInventoryDisplay() {
   const TIER_LABELS = ["", "T1", "T2", "T3"];
   const entries = ITEMS
-    .filter(item => state.inventory[item.id] > 0)
+    .filter(item => (state.itemsObtained[item.id] || 0) > 0)
     .sort((a, b) => {
-      const aMax = (state.inventory[a.id] || 0) >= 999;
-      const bMax = (state.inventory[b.id] || 0) >= 999;
+      const aMax = (state.itemsObtained[a.id] || 0) >= 999;
+      const bMax = (state.itemsObtained[b.id] || 0) >= 999;
       return aMax - bMax; // MAX は下へ
     })
     .map(item => {
-      const count = state.inventory[item.id];
-      const tier  = getItemTier(count);
-      const next  = BONUS_THRESHOLDS[tier];
+      const held     = state.inventory[item.id]     || 0;
+      const obtained = state.itemsObtained[item.id] || held;
+      const tier     = getItemTier(obtained);
+      const next     = BONUS_THRESHOLDS[tier];
 
       const tierBadge = `<span class="tier-badge tier-${tier}">${tier > 0 ? TIER_LABELS[tier] : "T0"}</span>`;
       const nextHint  = next !== undefined
         ? `<span class="inv-next">→${next}</span>`
         : `<span class="inv-next max">MAX</span>`;
 
-      const curEff  = calcItemEffect(item, count);
+      const curEff  = calcItemEffect(item, obtained);
       const curText = statStr(curEff);
       let nextText  = "";
       if (next !== undefined && item.bonus && item.bonus[tier]) {
         nextText = `<span class="inv-next-bonus">次(${next}個): +${statStr(item.bonus[tier])}</span>`;
       }
 
+      const obtainedLabel = `<span class="inv-count">所持 ${held}</span><span class="inv-obtained">累計 ${obtained}</span>`;
+
       return `<div class="inv-entry">
         <div class="inv-row">
           <span class="inv-name">${item.name}</span>
           ${tierBadge}
-          <span class="inv-count">×${count}</span>
+          ${obtainedLabel}
           ${nextHint}
         </div>
         <div class="inv-detail">
@@ -1291,12 +1317,13 @@ function rollDrops(enemy) {
     if (Math.random() < drop.rate) {
       const item = ITEM_MAP[drop.itemId];
       if (!item) return;
-      const prevCount = state.inventory[item.id] || 0;
-      state.inventory[item.id] = prevCount + 1;
-      const newCount = state.inventory[item.id];
-      const prevTier = getItemTier(prevCount);
-      const newTier  = getItemTier(newCount);
-      addSystemLog(`${item.name} を入手！ (×${newCount})`);
+      const prevObtained = state.itemsObtained[item.id] || 0;
+      state.itemsObtained[item.id] = prevObtained + 1;
+      state.inventory[item.id] = (state.inventory[item.id] || 0) + 1;
+      const newObtained = state.itemsObtained[item.id];
+      const prevTier = getItemTier(prevObtained);
+      const newTier  = getItemTier(newObtained);
+      addSystemLog(`${item.name} を入手！ (累計×${newObtained})`);
       if (newTier > prevTier) addSystemLog(`★ ${item.name} Tier${newTier} 解放！ボーナス加算！`);
       invalidateStats();
       updateStatsDisplay();
@@ -1352,8 +1379,9 @@ function saveData() {
     enemyMaxHp:   state.enemyMaxHp,
     playerHp:     state.playerHp,
     playerMaxHp:  state.playerMaxHp,
-    inventory:    state.inventory,
-    cleared:      state.cleared,
+    inventory:      state.inventory,
+    itemsObtained:  state.itemsObtained,
+    cleared:        state.cleared,
     shopLevels:   state.shopLevels,
     monsterKills:    state.monsterKills,
     refine:          state.refine,
@@ -1392,8 +1420,9 @@ function loadGame() {
   state.enemyMaxHp   = data.enemyMaxHp   ?? 0;
   state.playerHp     = data.playerHp     ?? 50;
   state.playerMaxHp  = data.playerMaxHp  ?? 50;
-  state.inventory    = data.inventory    || {};
-  state.cleared      = data.cleared      || false;
+  state.inventory      = data.inventory      || {};
+  state.itemsObtained  = data.itemsObtained  || { ...state.inventory }; // 旧セーブ互換
+  state.cleared        = data.cleared        || false;
   state.shopLevels   = data.shopLevels   || { vit: 0, agi: 0, dex: 0, luk: 0 };
   state.monsterKills    = data.monsterKills    || {};
   state.refine          = data.refine          || null;
