@@ -2545,6 +2545,54 @@ html, body {
   60%     { transform: translateX(-6px); }
   80%     { transform: translateX(6px); }
 }
+/* 復活演出: リールロック */
+.lk-reel-lock {
+  color: #cc3333 !important;
+  box-shadow: inset 0 4px 12px rgba(0,0,0,0.75), 0 0 0 3px #cc3333, 0 0 14px 4px rgba(200,40,40,0.4);
+  animation: lkLockPulse 0.5s ease infinite alternate !important;
+}
+@keyframes lkLockPulse {
+  from { box-shadow: inset 0 4px 12px rgba(0,0,0,0.75), 0 0 0 2px #bb2222, 0 0 10px 3px rgba(190,30,30,0.35); }
+  to   { box-shadow: inset 0 4px 12px rgba(0,0,0,0.75), 0 0 0 3px #dd5555, 0 0 20px 6px rgba(210,60,60,0.50); }
+}
+
+/* 復活演出: リールが上にスクロールしながら高速回転 */
+.lk-reel-revival {
+  animation: lkReelUp 0.09s steps(1) infinite !important;
+  overflow: hidden;
+}
+@keyframes lkReelUp {
+  0%  { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* 復活演出: 10× がしゃーん！クラッシュ */
+.lk-reel-crash {
+  color: #ff8800 !important;
+  text-shadow: 0 0 16px rgba(255,150,0,0.9);
+  animation: lkCrash 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) !important;
+}
+@keyframes lkCrash {
+  0%   { transform: scale(2.2) translateY(-30px); opacity: 0; }
+  40%  { transform: scale(1.15) translateY(5px);  opacity: 1; }
+  70%  { transform: scale(0.92); }
+  100% { transform: scale(1.00); }
+}
+
+/* 復活メッセージ */
+.lk-revival-msg { color: #ff6600; font-size: 1.05rem; text-shadow: 0 0 8px rgba(255,120,0,0.5); }
+.lk-lock-msg    { color: #cc1111; font-size: 0.9rem; }
+
+/* 復活フラッシュ */
+.lk-revival-flash {
+  animation: lkRevivalFlash 0.5s ease;
+}
+@keyframes lkRevivalFlash {
+  0%   { background: rgba(220,80,0,0); }
+  25%  { background: rgba(220,80,0,0.18); }
+  100% { background: rgba(220,80,0,0); }
+}
+
 .lk-jackpot-flash {
   animation: lkJackpot 0.55s ease;
 }
@@ -2675,11 +2723,11 @@ html, body {
   animation: lkZoneBorder 0.7s linear infinite;
 }
 @keyframes lkZoneBorder {
-  0%   { box-shadow: 0 0 0 3px #ff5050, 0 0 28px 8px rgba(255,60,60,0.5); }
-  25%  { box-shadow: 0 0 0 3px #ffcc00, 0 0 28px 8px rgba(255,200,0,0.5); }
-  50%  { box-shadow: 0 0 0 3px #44ddff, 0 0 28px 8px rgba(60,200,255,0.5); }
-  75%  { box-shadow: 0 0 0 3px #aaff66, 0 0 28px 8px rgba(120,255,80,0.5); }
-  100% { box-shadow: 0 0 0 3px #ff5050, 0 0 28px 8px rgba(255,60,60,0.5); }
+  0%   { box-shadow: 0 0 0 3px #cc4848, 0 0 16px 5px rgba(200,60,60,0.35); }
+  25%  { box-shadow: 0 0 0 3px #c8a820, 0 0 16px 5px rgba(200,160,0,0.35); }
+  50%  { box-shadow: 0 0 0 3px #3ab0cc, 0 0 16px 5px rgba(50,170,200,0.35); }
+  75%  { box-shadow: 0 0 0 3px #80c050, 0 0 16px 5px rgba(100,190,60,0.35); }
+  100% { box-shadow: 0 0 0 3px #cc4848, 0 0 16px 5px rgba(200,60,60,0.35); }
 }
 
 /* モーダルシェイク（はずれ） */
@@ -2694,12 +2742,49 @@ html, body {
   75%     { transform: translateX(7px); }
 }
 
+/* 2万G超え: 獲得G表示レインボー */
+.lk-done-amount.lk-mega {
+  font-size: 2.8rem;
+  background: linear-gradient(90deg, #d46060, #cc8800, #b8b000, #40a060, #4488cc, #9955cc, #d46060);
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: lkRewardPop 0.45s cubic-bezier(0.22,0.61,0.36,1), lkMegaRainbow 2.2s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(200,160,30,0.45));
+}
+@keyframes lkMegaRainbow {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+/* 2万G超え: モーダル枠ゴールド点滅 */
+.lucky-modal-box.lk-mega-active {
+  animation: lkMegaBorder 1.2s ease-in-out infinite;
+}
+@keyframes lkMegaBorder {
+  0%   { box-shadow: 0 0 0 3px #c8a820, 0 0 16px 5px rgba(200,170,30,0.35); }
+  50%  { box-shadow: 0 0 0 3px #e8cc60, 0 0 24px 8px rgba(220,200,80,0.50); }
+  100% { box-shadow: 0 0 0 3px #c8a820, 0 0 16px 5px rgba(200,170,30,0.35); }
+}
+
+/* 2万G超えクレームフラッシュ */
+.lk-mega-flash {
+  animation: lkMegaFlash 0.7s ease;
+}
+@keyframes lkMegaFlash {
+  0%   { background: rgba(220,200,0,0); }
+  20%  { background: rgba(220,200,0,0.22); }
+  50%  { background: rgba(200,80,160,0.12); }
+  100% { background: rgba(220,200,0,0); }
+}
+
 /* 超大当たりフラッシュ */
 .lk-super-flash {
   animation: lkSuperFlash 0.5s ease;
 }
 @keyframes lkSuperFlash {
-  0%   { background: rgba(255,210,0,0); }
-  30%  { background: rgba(255,210,0,0.25); }
-  100% { background: rgba(255,210,0,0); }
+  0%   { background: rgba(220,190,0,0); }
+  30%  { background: rgba(220,190,0,0.16); }
+  100% { background: rgba(220,190,0,0); }
 }

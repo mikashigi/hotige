@@ -2281,6 +2281,47 @@ function _playLuckySfx(type) {
     case 'claim':
       [523, 659, 784, 1047, 1319, 1568].forEach((f, i) =>
         tone(f, now + i * 0.055, 0.38, i < 5 ? 0.16 : 0.26)); break;
+    case 'mega': {
+      // 上昇スケール→頂点でキラキラ
+      [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) =>
+        tone(f, now + i * 0.055, 0.45, 0.22, 'sine'));
+      // 高音キラキラ
+      [2093, 2637, 3136].forEach((f, i) =>
+        tone(f, now + 0.42 + i * 0.07, 0.28, 0.18, 'triangle'));
+      break;
+    }
+    case 'revival_lock': {
+      // 不穏な低音 → ドキドキ
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(masterGain);
+      o.type = 'square';
+      o.frequency.setValueAtTime(110, now);
+      o.frequency.setValueAtTime(90,  now + 0.18);
+      o.frequency.setValueAtTime(110, now + 0.36);
+      g.gain.setValueAtTime(0.10, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      o.onended = () => { o.disconnect(); g.disconnect(); };
+      o.start(now); o.stop(now + 0.52);
+      break;
+    }
+    case 'revival_crash': {
+      // 下降 → ドン！→ 上昇ファンファーレ
+      const o2 = audioCtx.createOscillator();
+      const g2 = audioCtx.createGain();
+      o2.connect(g2); g2.connect(masterGain);
+      o2.type = 'sawtooth';
+      o2.frequency.setValueAtTime(600, now);
+      o2.frequency.exponentialRampToValueAtTime(80, now + 0.25);
+      g2.gain.setValueAtTime(0.22, now);
+      g2.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      o2.onended = () => { o2.disconnect(); g2.disconnect(); };
+      o2.start(now); o2.stop(now + 0.30);
+      // ファンファーレ
+      [330, 440, 554, 660, 880].forEach((f, i) =>
+        tone(f, now + 0.25 + i * 0.075, 0.35, 0.18, 'triangle'));
+      break;
+    }
     case 'miss': {
       const o = audioCtx.createOscillator();
       const g = audioCtx.createGain();
@@ -2304,9 +2345,12 @@ function _luckyParticleBurst(type) {
   const rect  = modal.getBoundingClientRect();
   const cx    = rect.left + rect.width / 2;
   const cy    = rect.top  + rect.height * 0.42;
-  const count   = type === 'super' ? 24 : type === 'claim' ? 30 : 14;
-  const symbols = type === 'claim' ? ['G','G','★','✦'] : ['★','✦','◆','●'];
-  const colors  = type === 'super'
+  const count   = type === 'mega' ? 55 : type === 'super' ? 24 : type === 'claim' ? 30 : 14;
+  const symbols = type === 'mega'  ? ['G','G','G','★','💰','✨','🌟','💎']
+                : type === 'claim' ? ['G','G','★','✦'] : ['★','✦','◆','●'];
+  const colors  = type === 'mega'
+    ? ['#ffd700','#ffaa00','#ff5050','#ff44cc','#44ddff','#aaff44','#ffffff']
+    : type === 'super'
     ? ['#ffd700','#ffaa00','#ffee44','#ff8800']
     : type === 'claim'
     ? ['#f0c030','#44dd88','#60a0ff','#ffaa40']
@@ -2317,10 +2361,10 @@ function _luckyParticleBurst(type) {
     el.className = 'lk-particle';
     el.textContent = symbols[i % symbols.length];
     const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.8;
-    const speed = 70 + Math.random() * (type === 'super' ? 130 : 80);
+    const speed = 70 + Math.random() * (type === 'mega' ? 200 : type === 'super' ? 130 : 80);
     const dx    = Math.cos(angle) * speed;
-    const dy    = Math.sin(angle) * speed * 0.55 - (30 + Math.random() * 50);
-    const dur   = 600 + Math.random() * 400;
+    const dy    = Math.sin(angle) * speed * 0.55 - (30 + Math.random() * (type === 'mega' ? 90 : 50));
+    const dur   = (type === 'mega' ? 900 : 600) + Math.random() * 400;
     el.style.left  = cx + 'px';
     el.style.top   = cy + 'px';
     el.style.color = colors[i % colors.length];
@@ -2432,9 +2476,10 @@ function _renderLucky() {
 
   } else if (_luckyPhase === 'done') {
     const reward = _luckyTotal();
+    const megaCls = reward >= 20000 ? ' lk-mega' : '';
     centerHtml = `
       <div class="lk-done-label">獲得G</div>
-      <div class="lk-done-amount">${fmt(reward)}G</div>`;
+      <div class="lk-done-amount${megaCls}">${fmt(reward)}G</div>`;
     btnsHtml = `<button class="lk-btn lk-btn-claim" onclick="luckyClaim()">✨ 受け取る</button>`;
   }
 
@@ -2444,7 +2489,11 @@ function _renderLucky() {
     <div class="lk-btns">${btnsHtml}</div>`;
 
   // ゾーン中はモーダル枠を金色に光らせる
-  document.querySelector('.lucky-modal-box')?.classList.toggle('lk-zone-active', _luckyPhase === 'zone');
+  const _lkBox = document.querySelector('.lucky-modal-box');
+  if (_lkBox) {
+    _lkBox.classList.toggle('lk-zone-active', _luckyPhase === 'zone');
+    _lkBox.classList.toggle('lk-mega-active', _luckyPhase === 'done' && _luckyTotal() >= 20000);
+  }
 }
 
 function luckyStart() {
@@ -2515,8 +2564,13 @@ function luckySpin() {
       if (box) { box.classList.add('lk-shake'); setTimeout(() => box.classList.remove('lk-shake'), 500); }
       const msg = document.getElementById('lk-msg');
       if (msg) msg.innerHTML = `<span class="lk-miss-msg">💔 はずれ…</span>`;
-      _luckyPhase = 'done';
-      setTimeout(_renderLucky, 1250);
+      // 復活チャンス（30%）
+      if (Math.random() < 0.30) {
+        setTimeout(_luckyRevival, 900);
+      } else {
+        _luckyPhase = 'done';
+        setTimeout(_renderLucky, 1250);
+      }
     }
   });
 }
@@ -2594,6 +2648,62 @@ function _doZoneSpin() {
   }, 700); // ゾーン内は高速アニメ
 }
 
+// ── 復活演出 ─────────────────────────────────────────────────────
+function _luckyRevival() {
+  const reel = document.getElementById('lk-reel');
+  const msg  = document.getElementById('lk-msg');
+  if (!reel) return;
+
+  // Step1: リールロック（赤枠ドキドキ）
+  reel.classList.remove('lk-reel-miss');
+  reel.classList.add('lk-reel-lock');
+  if (msg) msg.innerHTML = '';
+  _playLuckySfx('revival_lock');
+
+  // Step2: 0.5s 後に高速上スクロール開始
+  const scrollSymbols = ['はずれ','2×','はずれ','5×','はずれ','3×','はずれ','10×'];
+  let si = 0;
+  setTimeout(() => {
+    reel.classList.remove('lk-reel-lock');
+    reel.classList.add('lk-reel-revival');
+    if (msg) msg.innerHTML = '';
+
+    const spinTimer = setInterval(() => {
+      reel.textContent = scrollSymbols[si % scrollSymbols.length];
+      si++;
+    }, 90);
+
+    // Step3: 1.4s 後にがしゃーん！ 10× で止める
+    setTimeout(() => {
+      clearInterval(spinTimer);
+      reel.classList.remove('lk-reel-revival');
+      reel.textContent = '10×';
+      reel.classList.add('lk-reel-crash');
+
+      // フラッシュ
+      const body = document.getElementById('lucky-body');
+      if (body) {
+        body.classList.add('lk-revival-flash');
+        setTimeout(() => body.classList.remove('lk-revival-flash'), 500);
+      }
+      // パーティクル
+      _luckyParticleBurst('jackpot');
+      _playLuckySfx('revival_crash');
+
+      if (msg) msg.innerHTML = `<span class="lk-revival-msg">💥 復活！ ×10 追加！！</span>`;
+
+      // Step4: 1s 後に mult フェーズへ復帰
+      setTimeout(() => {
+        _luckyMults.push(10);
+        reel.classList.remove('lk-reel-crash');
+        _luckyPhase = 'mult';
+        _luckySpinning = false;
+        _renderLucky();
+      }, 1100);
+    }, 1400);
+  }, 500);
+}
+
 function _animateLuckyReel(el, isBase, finalVal, cb, duration = 1500) {
   // finalVal: 数値(当選) | null(はずれ)
   const min = isBase ? LUCKY_CONFIG.baseMin : LUCKY_CONFIG.multTable[0][0];
@@ -2631,8 +2741,18 @@ function _animateLuckyReel(el, isBase, finalVal, cb, duration = 1500) {
 
 function luckyClaim() {
   const reward = _luckyTotal();
-  _playLuckySfx('claim');
-  _luckyParticleBurst('claim');
+  if (reward >= 20000) {
+    _playLuckySfx('mega');
+    _luckyParticleBurst('mega');
+    const _lkBox = document.querySelector('.lucky-modal-box');
+    if (_lkBox) {
+      _lkBox.classList.add('lk-mega-flash');
+      setTimeout(() => _lkBox.classList.remove('lk-mega-flash'), 700);
+    }
+  } else {
+    _playLuckySfx('claim');
+    _luckyParticleBurst('claim');
+  }
   state.gold += reward - LUCKY_COST;
   updateShopDisplay();
   autoSave();
