@@ -780,14 +780,14 @@ html, body {
 .tab-badge.warn    { background: #f57c00; }
 
 @keyframes tabFlashSuccess {
-  0%   { background: var(--panel-hd); color: var(--text-muted); }
-  20%  { background: #b8f0b0; color: #2a6a20; }
-  100% { background: var(--panel-hd); color: var(--text-muted); }
+  0%   { background: var(--panel-hd); }
+  20%  { background: #b8f0b0; }
+  100% { background: var(--panel-hd); }
 }
 @keyframes tabFlashWarn {
-  0%   { background: var(--panel-hd); color: var(--text-muted); }
-  20%  { background: #ffe0b0; color: #b05000; }
-  100% { background: var(--panel-hd); color: var(--text-muted); }
+  0%   { background: var(--panel-hd); }
+  20%  { background: #ffe0b0; }
+  100% { background: var(--panel-hd); }
 }
 .tab-btn.flash-success { animation: tabFlashSuccess 1.2s ease forwards; }
 .tab-btn.flash-warn    { animation: tabFlashWarn    1.2s ease forwards; }
