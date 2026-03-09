@@ -104,7 +104,7 @@ html, body {
   border-radius: 16px;
   overflow: hidden;
   display: grid;
-  grid-template-rows: 58px 1fr;
+  grid-template-rows: 58px 1fr auto;
   position: relative;
   isolation: isolate;
 }
@@ -1513,19 +1513,17 @@ html, body {
 }
 
 #save-buttons {
-  position: fixed;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 6px;
-  z-index: 50;
+  padding: 5px 10px;
+  background: var(--panel-hd);
+  border-top: 1.5px solid var(--border);
 }
 .save-icon-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
   border: 1.5px solid var(--border);
   background: var(--btn-save);
   color: var(--text);
@@ -1537,11 +1535,12 @@ html, body {
   font-weight: bold;
   transition: background 0.15s;
   box-shadow: 0 1px 4px #0002;
+  white-space: nowrap;
 }
 .save-icon-btn:hover { background: var(--btn-save-hv); }
 .save-icon-btn.reset { background: var(--btn-reset); }
 .save-icon-btn.reset:hover { background: var(--btn-reset-hv); }
-.save-icon-btn.home { background: #4a6fa5; color: #fff; }
+.save-icon-btn.home { background: #4a6fa5; color: #fff; margin-left: auto; }
 .save-icon-btn.home:hover { background: #3a5f95; }
 .save-icon-img {
   width: 22px;
@@ -2506,6 +2505,22 @@ html, body {
 }
 
 /* 開始画面 */
+.lk-tier-row { display: flex; gap: 5px; justify-content: center; margin-bottom: 4px; }
+.lk-tier-btn {
+  padding: 3px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+.lk-tier-btn.active {
+  background: #c89800;
+  border-color: #a07000;
+  color: #fff;
+}
 .lk-cost-line { font-size: 1.05rem; text-align: center; }
 .lk-hint {
   font-size: 0.8rem;

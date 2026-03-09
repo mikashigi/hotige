@@ -137,11 +137,11 @@ const CHAR_ICON = "img/icon/char.png"; // 例: "img/icon/char.png"
 
 // セーブアイコン: src に画像パスを設定すると画像表示、空なら alt のテキストを表示
 const SAVE_ICONS = [
-  { id: "save",   src: "", alt: "S", label: "セーブ",           action: "saveGame()" },
-  { id: "export", src: "", alt: "E", label: "エクスポート",     action: "openExportModal()" },
-  { id: "import", src: "", alt: "I", label: "インポート",       action: "openImportModal()" },
-  { id: "home",   src: "", alt: "↩", label: "マップ1へ戻る",   action: "returnToFirstMap()", cls: "home" },
-  { id: "reset",  src: "", alt: "R", label: "リセット",         action: "resetSave()",        cls: "reset" },
+  { id: "save",   src: "", alt: "SAVE",   label: "セーブ",       action: "saveGame()" },
+  { id: "export", src: "", alt: "EXPORT", label: "エクスポート", action: "openExportModal()" },
+  { id: "import", src: "", alt: "IMPORT", label: "インポート",   action: "openImportModal()" },
+  { id: "reset",  src: "", alt: "RESET",  label: "リセット",     action: "resetSave()",        cls: "reset" },
+  { id: "home",   src: "", alt: "HOME",   label: "マップ1へ戻る", action: "returnToFirstMap()", cls: "home" },
 ];
 
 // パネルアイコン: src に画像パスを設定すると画像表示、空なら alt のテキストを表示
@@ -2290,7 +2290,13 @@ function renderMonsterBook() {
 // 🎰 運試し屋  ── パラメータ設定
 // ============================================================
 const LUCKY_CONFIG = {
-  cost:          10000,  // 1回のコスト (G)
+  // ── コスト・初期G ティア ─────────────────────────────────
+  tiers: [
+    { cost:       1000, baseMin:    10, baseMax:    50 },
+    { cost:      10000, baseMin:   100, baseMax:   500 },
+    { cost:     100000, baseMin:  1000, baseMax:  5000 },
+    { cost:    1000000, baseMin: 10000, baseMax: 50000 },
+  ],
 
   // ── 各リールの当たり確率 ─────────────────────────────────
   //   3リール同時抽選。全当たりで続行、ゾロ目で超運試し突入
@@ -2299,10 +2305,6 @@ const LUCKY_CONFIG = {
 
   // ── 超運試しのループ確率 ──────────────────────────────────
   zoneLoopChance: 0.88,  // ← ここを変える (0.0〜1.0)
-
-  // ── 初期G 範囲 ────────────────────────────────────────────
-  baseMin: 100,           // ← 最小値
-  baseMax: 500,           // ← 最大値   平均 = (min+max)/2 = 275G
 
   // ── 倍率テーブル: [倍率, 相対重み] ────────────────────────
   //   重みが大きいほど出やすい。合計値は自動計算するので自由に増減OK
@@ -2475,7 +2477,7 @@ function _drawMult() {
   return table[table.length - 1][0];
 }
 
-const LUCKY_COST = LUCKY_CONFIG.cost;
+let _luckyTierIdx  = 1;  // デフォルト: 10,000G ティア
 let _luckyPhase    = null;   // 'idle' | 'base' | 'mult' | 'done'
 let _luckyBase     = 0;
 let _luckyMults    = [];
@@ -2538,9 +2540,14 @@ function _renderLucky() {
   let btnsHtml   = '';
 
   if (_luckyPhase === 'idle') {
-    const ok = state.gold >= LUCKY_COST;
+    const tier = LUCKY_CONFIG.tiers[_luckyTierIdx];
+    const ok = state.gold >= tier.cost;
+    const tierBtns = LUCKY_CONFIG.tiers.map((t, i) =>
+      `<button class="lk-tier-btn${i === _luckyTierIdx ? ' active' : ''}" onclick="_setLuckyTier(${i})">${fmtShop(t.cost)}</button>`
+    ).join('');
     centerHtml = `
-      <div class="lk-cost-line">1回 <strong>${fmt(LUCKY_COST)}G</strong></div>
+      <div class="lk-tier-row">${tierBtns}</div>
+      <div class="lk-cost-line">1回 <strong>${fmt(tier.cost)}G</strong></div>
       <div class="lk-hint">初期Gを抽選後、3リールで倍率を同時抽選！<br>全当たりで続行・ゾロ目で超運試し突入<br>はずれ混じりで終了・全はずれは復活確定</div>`;
     btnsHtml = `
       <button class="lk-btn lk-btn-start" onclick="luckyStart()" ${ok ? '' : 'disabled'}>🎰 挑戦する</button>
@@ -2555,7 +2562,7 @@ function _renderLucky() {
 
   } else if (_luckyPhase === 'base') {
     centerHtml = `
-      <div class="lk-slot-label">初期G 抽選（${fmt(LUCKY_CONFIG.baseMin)} 〜 ${fmt(LUCKY_CONFIG.baseMax)}）</div>
+      <div class="lk-slot-label">初期G 抽選（${fmt(LUCKY_CONFIG.tiers[_luckyTierIdx].baseMin)} 〜 ${fmt(LUCKY_CONFIG.tiers[_luckyTierIdx].baseMax)}）</div>
       <div class="lk-slot-box"><div class="lk-reel" id="lk-reel">?</div></div>
       <div class="lk-msg" id="lk-msg"></div>`;
     if (!_luckySpinning) {
@@ -2579,7 +2586,7 @@ function _renderLucky() {
 
   } else if (_luckyPhase === 'done') {
     const reward = _luckyTotal();
-    const megaCls = reward >= 20000 ? ' lk-mega' : '';
+    const megaCls = reward >= LUCKY_CONFIG.tiers[_luckyTierIdx].cost * 2 ? ' lk-mega' : '';
     centerHtml = `
       <div class="lk-done-label">獲得G</div>
       <div class="lk-done-amount${megaCls}">${fmt(reward)}G</div>`;
@@ -2595,12 +2602,18 @@ function _renderLucky() {
   const _lkBox = document.querySelector('.lucky-modal-box');
   if (_lkBox) {
     _lkBox.classList.toggle('lk-zone-active', _luckyPhase === 'zone');
-    _lkBox.classList.toggle('lk-mega-active', _luckyPhase === 'done' && _luckyTotal() >= 20000);
+    _lkBox.classList.toggle('lk-mega-active', _luckyPhase === 'done' && _luckyTotal() >= LUCKY_CONFIG.tiers[_luckyTierIdx].cost * 2);
   }
 }
 
+function _setLuckyTier(idx) {
+  _luckyTierIdx = idx;
+  _renderLucky();
+}
+
 function luckyStart() {
-  if (state.gold < LUCKY_COST || _luckySpinning) return;
+  const tier = LUCKY_CONFIG.tiers[_luckyTierIdx];
+  if (state.gold < tier.cost || _luckySpinning) return;
   _luckyBase     = 0;
   _luckyMults    = [];
   _luckyPhase    = 'base';
@@ -2614,7 +2627,8 @@ function luckySpin() {
 
   if (_luckyPhase === 'base') {
     // ── ベース抽選（1リール）──────────────────────────────
-    const finalVal = Math.floor(Math.random() * (LUCKY_CONFIG.baseMax - LUCKY_CONFIG.baseMin + 1)) + LUCKY_CONFIG.baseMin;
+    const _t = LUCKY_CONFIG.tiers[_luckyTierIdx];
+    const finalVal = Math.floor(Math.random() * (_t.baseMax - _t.baseMin + 1)) + _t.baseMin;
     _renderLucky();
     const reel = document.getElementById('lk-reel');
     if (!reel) { _luckySpinning = false; return; }
@@ -2920,7 +2934,7 @@ function _animateLuckyReel(el, isBase, finalVal, cb, duration = 1500) {
 
 function luckyClaim() {
   const reward = _luckyTotal();
-  if (reward >= 20000) {
+  if (reward >= LUCKY_CONFIG.tiers[_luckyTierIdx].cost * 2) {
     _playLuckySfx('mega');
     _luckyParticleBurst('mega');
     const _lkBox = document.querySelector('.lucky-modal-box');
@@ -2932,10 +2946,11 @@ function luckyClaim() {
     _playLuckySfx('claim');
     _luckyParticleBurst('claim');
   }
-  state.gold += reward - LUCKY_COST;
+  const _tc = LUCKY_CONFIG.tiers[_luckyTierIdx].cost;
+  state.gold += reward - _tc;
   updateShopDisplay();
   autoSave();
-  const net = reward - LUCKY_COST;
+  const net = reward - _tc;
   addSystemLog(`🎰 運試し屋: ${fmt(reward)}G 獲得（コスト差引 ${net >= 0 ? '+' : ''}${fmt(net)}G）`);
   closeLucky();
 }
