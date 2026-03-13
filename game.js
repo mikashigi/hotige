@@ -805,6 +805,7 @@ function tick() {
     state.enemyHp -= dmg;
     showDamageNumber(dmg, dmgType);
     flashEnemyHit();
+    playHitSound(dmgType === "crit");
     addLog(`攻撃！ ${dmg} ダメージ（残HP: ${Math.max(0, state.enemyHp)}）${suffix}`);
     updateHpDisplay();
 
@@ -848,6 +849,7 @@ function tickMulti(s) {
     e.currentHp = Math.max(0, e.currentHp - dmg);
     showDamageNumber(dmg, dmgType);
     flashEnemyHit();
+    playHitSound(dmgType === "crit");
     addLog(`攻撃！ ${dmg} ダメージ（残HP: ${e.currentHp}）${suffix}`);
     updateMultiGrid();
     if (e.currentHp > 0) return;
@@ -856,6 +858,7 @@ function tickMulti(s) {
     e.currentHp = 0;
     showDamageNumber("KILL", "crit");
     flashEnemyHit();
+    playHitSound(true);
   }
 
   // 討伐確定
@@ -1238,13 +1241,17 @@ function updateRefineDisplay() {
       return `<span class="refine-chip${enough ? "" : " missing"}">${name}×${inp.count}<span class="refine-chip-have">(<span class="refine-num">${have}</span>)</span></span>`;
     }).join("");
 
-    const outName = ITEM_MAP[recipe.output.itemId]?.name ?? recipe.output.itemId;
+    const outItem  = ITEM_MAP[recipe.output.itemId];
+    const outName  = outItem?.name ?? recipe.output.itemId;
+    const outHave  = state.inventory[recipe.output.itemId] || 0;
+    const outTier  = getItemTier(outHave);
+    const tierStr  = outTier > 0 ? ` / Tier${outTier}` : "";
     html += `
       <div class="refine-recipe-row${isActive ? " refining" : ""}">
         <div class="refine-recipe-info">
           <div class="refine-recipe-name">${recipe.name}</div>
           <div class="refine-ingredients">${chipsHtml}</div>
-          <div class="refine-output">→ ${outName} ×${recipe.output.count}　${recipe.time}秒</div>
+          <div class="refine-output">→ ${outName} ×${recipe.output.count}　${recipe.time}秒　<span class="refine-out-have">所持: ${outHave}${tierStr}</span></div>
         </div>
         <div class="refine-btn-group">
           <button class="refine-btn" ${ok ? "" : "disabled"} onclick="startRefine('${recipe.id}', 1)">×1</button>
@@ -1907,6 +1914,76 @@ function showExplosionEffect() {
     document.body.appendChild(spark);
     spark.addEventListener("animationend", () => spark.remove());
   }
+}
+
+let _lastHitSoundTime = 0;
+
+// ノイズバースト生成ヘルパー
+function _makeNoise(dur) {
+  const bufLen = Math.floor(audioCtx.sampleRate * dur);
+  const buf  = audioCtx.createBuffer(1, bufLen, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  return src;
+}
+
+function playHitSound(isCrit = false) {
+  if (soundMuted || audioCtx.state !== 'running' || _luckyOpen) return;
+  const now = audioCtx.currentTime;
+  if (now - _lastHitSoundTime < 0.03) return;
+  _lastHitSoundTime = now;
+
+  // ランダムで微妙にピッチ・長さをずらす
+  const pitchVar = 0.8 + Math.random() * 0.4;   // ×0.8〜1.2
+  const volVar   = 0.9 + Math.random() * 0.2;   // ×0.9〜1.1
+
+  if (isCrit) {
+    // ===== クリティカル: ざん＋キン =====
+    const dur = 0.13;
+    const noise = _makeNoise(dur);
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.setValueAtTime(5000 * pitchVar, now);
+    filter.Q.value = 0.7;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.38 * volVar, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+    noise.connect(filter); filter.connect(gain); gain.connect(masterGain);
+    noise.onended = () => { noise.disconnect(); filter.disconnect(); gain.disconnect(); };
+    noise.start(now);
+
+    // キン（金属音）
+    const osc = audioCtx.createOscillator();
+    const oscGain = audioCtx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(2000 * pitchVar, now);
+    osc.frequency.exponentialRampToValueAtTime(800 * pitchVar, now + 0.12);
+    oscGain.gain.setValueAtTime(0.18 * volVar, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.connect(oscGain); oscGain.connect(masterGain);
+    osc.onended = () => { osc.disconnect(); oscGain.disconnect(); };
+    osc.start(now); osc.stop(now + 0.12);
+    return;
+  }
+
+  // ===== 通常ヒット: ざしゅ系（ピッチ・長さ・帯域をランダムに揺らす）=====
+  const dur = 0.06 + Math.random() * 0.04;
+  const freq = (3000 + Math.random() * 1500) * pitchVar;
+  const q    = 0.6 + Math.random() * 0.5;
+
+  const noise = _makeNoise(dur);
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(freq, now);
+  filter.Q.value = q;
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.22 * volVar, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  noise.connect(filter); filter.connect(gain); gain.connect(masterGain);
+  noise.onended = () => { noise.disconnect(); filter.disconnect(); gain.disconnect(); };
+  noise.start(now);
 }
 
 function playDefeatSound() {

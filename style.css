@@ -1477,6 +1477,10 @@ html, body {
   font-size: 0.68rem;
   color: var(--text-muted);
 }
+.refine-out-have {
+  color: var(--accent, #aaddff);
+  font-size: 0.66rem;
+}
 
 .refine-btn-group {
   display: flex;
