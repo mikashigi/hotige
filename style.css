@@ -1423,14 +1423,16 @@ html, body {
   white-space: nowrap;
   transition: background 0.15s;
   flex-shrink: 0;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
 }
 /* コスト数字固定幅（fmtShopで最大6文字: "999.9M"）ボタン幅はコンテンツに合わせて自動で固定 */
 .shop-cost { display: inline-block; width: 6ch; text-align: right; }
 .shop-btn-qty {
   font-size: 0.68rem;
   opacity: 0.7;
-  margin-right: 3px;
 }
 /* 単独ボタン（HP回復など）*/
 .shop-btn-group .shop-btn:only-child,
