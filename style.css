@@ -2804,8 +2804,8 @@ html, body {
   100% { transform: scale(1.00); }
 }
 @keyframes lkReelSlide {
-  0%   { opacity: 0.2; transform: translateY(-45%) scaleY(0.75); }
-  100% { opacity: 1;   transform: translateY(0)    scaleY(1); }
+  0%   { opacity: 0.15; }
+  100% { opacity: 1; }
 }
 .lk-reel-miss {
   color: #ff4444 !important;

@@ -161,8 +161,8 @@ function _luckyParticleBurst(type) {
   const cx    = rect.left + rect.width / 2;
   const cy    = rect.top  + rect.height * 0.42;
   const count   = type === 'mega' ? 55 : type === 'super' ? 24 : type === 'claim' ? 30 : 14;
-  const symbols = type === 'mega'  ? ['G','G','G','★','💰','✨','🌟','💎']
-                : type === 'claim' ? ['G','G','★','✦'] : ['★','✦','◆','●'];
+  const symbols = type === 'mega'  ? ['🪙','🪙','🪙','★','💰','✨','🌟','💎']
+                : type === 'claim' ? ['🪙','🪙','★','✦'] : ['★','✦','◆','●'];
   const colors  = type === 'mega'
     ? ['#ffd700','#ffaa00','#ff5050','#ff44cc','#44ddff','#aaff44','#ffffff']
     : type === 'super'
@@ -219,7 +219,7 @@ function _luckyTotal() {
 
 function _luckyFormulaHtml() {
   if (!_luckyBase) return '<div class="lk-formula lk-formula-ph"></div>';
-  let h = `<span class="lk-base">${_luckyBase}G</span>`;
+  let h = `<span class="lk-base">${_luckyBase}🪙</span>`;
   if (_luckyMults.length) {
     const sum = _luckyMults.reduce((s, m) => s + m, 0);
     // 4個以上は内訳を省略して合計値だけ表示（1行に収める）
@@ -227,7 +227,7 @@ function _luckyFormulaHtml() {
       ? (_luckyMults.length === 1 ? `${sum}` : `(${_luckyMults.join(' + ')})`)
       : `${sum} <span class="lk-count">${_luckyMults.length}連</span>`;
     h += ` <span class="lk-op">×</span><span class="lk-mult">${sumStr}</span>`;
-    h += ` <span class="lk-op">=</span><span class="lk-total">${fmt(_luckyBase * sum)}G</span>`;
+    h += ` <span class="lk-op">=</span><span class="lk-total">${fmt(_luckyBase * sum)}🪙</span>`;
   }
   return `<div class="lk-formula">${h}</div>`;
 }
@@ -275,11 +275,11 @@ function _renderLucky() {
     ).join('');
     centerHtml = `
       <div class="lk-tier-row">${tierBtns}</div>
-      <div class="lk-cost-line">1回 <strong>${fmt(tier.cost)}G</strong></div>
-      <div class="lk-hint">初期Gを抽選後、3リールで倍率を同時抽選！<br>全当たりで続行・ゾロ目で超運試し突入<br>はずれ混じりで終了・全はずれは復活確定</div>`;
+      <div class="lk-cost-line">1回 <strong>${fmt(tier.cost)}🪙</strong></div>
+      <div class="lk-hint">初期🪙を抽選後、3リールで倍率を同時抽選！<br>全当たりで続行・ゾロ目で超運試し突入<br>はずれ混じりで終了・全はずれは復活確定</div>`;
     btnsHtml = `
       <button class="lk-btn lk-btn-start" onclick="luckyStart()" ${ok ? '' : 'disabled'}>🎰 挑戦する</button>
-      ${!ok ? `<div class="lk-nogold">G不足（所持: ${fmt(state.gold)}G）</div>` : ''}`;
+      ${!ok ? `<div class="lk-nogold">🪙不足（所持: ${fmt(state.gold)}🪙）</div>` : ''}`;
 
   } else if (_luckyPhase === 'zone') {
     centerHtml = `
@@ -290,7 +290,7 @@ function _renderLucky() {
 
   } else if (_luckyPhase === 'base') {
     centerHtml = `
-      <div class="lk-slot-label">初期G 抽選（${fmt(LUCKY_CONFIG.tiers[_luckyTierIdx].baseMin)} 〜 ${fmt(LUCKY_CONFIG.tiers[_luckyTierIdx].baseMax)}）</div>
+      <div class="lk-slot-label">初期🪙 抽選（${fmt(LUCKY_CONFIG.tiers[_luckyTierIdx].baseMin)} 〜 ${fmt(LUCKY_CONFIG.tiers[_luckyTierIdx].baseMax)}）</div>
       <div class="lk-slot-box"><div class="lk-reel" id="lk-reel">?</div></div>
       <div class="lk-msg" id="lk-msg"></div>`;
     if (!_luckySpinning) {
@@ -316,8 +316,8 @@ function _renderLucky() {
     const reward = _luckyTotal();
     const megaCls = reward >= LUCKY_CONFIG.tiers[_luckyTierIdx].cost * 2 ? ' lk-mega' : '';
     centerHtml = `
-      <div class="lk-done-label">獲得G</div>
-      <div class="lk-done-amount${megaCls}">${fmt(reward)}G</div>`;
+      <div class="lk-done-label">獲得🪙</div>
+      <div class="lk-done-amount${megaCls}">${fmt(reward)}🪙</div>`;
     btnsHtml = `<button class="lk-btn lk-btn-claim" onclick="luckyClaim()">✨ 受け取る</button>`;
   }
 
@@ -366,7 +366,7 @@ function luckySpin() {
       _luckyPhase = 'mult';
       _playLuckySfx('base');
       const msg = document.getElementById('lk-msg');
-      if (msg) msg.innerHTML = `<span class="lk-msg-base">ベースG: ${fmt(finalVal)}G 確定！</span>`;
+      if (msg) msg.innerHTML = `<span class="lk-msg-base">ベース🪙: ${fmt(finalVal)}🪙 確定！</span>`;
       setTimeout(_renderLucky, 900);
     });
 
@@ -633,7 +633,7 @@ function _reelSetValue(el, text) {
   el.style.animation = 'none';
   // 強制リフロー後に再セットしてアニメをリスタート
   void el.offsetWidth;
-  el.style.animation = 'lkReelSlide 0.07s ease-out';
+  el.style.animation = 'lkReelSlide 0.05s ease-out';
 }
 
 function _animateLuckyReel(el, isBase, finalVal, cb, duration = 1500) {
@@ -697,7 +697,7 @@ function luckyClaim() {
   updateShopDisplay();
   autoSave();
   const net = reward - _tc;
-  addSystemLog(`🎰 運試し屋: ${fmt(reward)}G 獲得（コスト差引 ${net >= 0 ? '+' : ''}${fmt(net)}G）`);
+  addSystemLog(`🎰 運試し屋: ${fmt(reward)}🪙 獲得（コスト差引 ${net >= 0 ? '+' : ''}${fmt(net)}🪙）`);
   closeLucky();
 }
 
