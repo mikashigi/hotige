@@ -1595,7 +1595,19 @@ function statStr(obj, prefix = "") {
     .join(" ") || "—";
 }
 
-// アイテムID → 使用レシピ名リストの逆引きマップ
+// アイテムID → 使用レシピ名リストの逆引きマップ（クリックで開閉）
+function toggleRecipeHint(btn) {
+  const body = btn.nextElementSibling;
+  const open = body.hidden;
+  body.hidden = !open;
+  btn.classList.toggle("open", open);
+}
+
+function recipeHintHtml(recipes) {
+  if (!recipes || recipes.length === 0) return "";
+  return `<div class="recipe-hint"><button class="recipe-hint-btn" onclick="toggleRecipeHint(this)">使い道</button><div class="recipe-hint-body" hidden>${recipes.join("・")}</div></div>`;
+}
+
 const ITEM_RECIPE_MAP = (() => {
   const map = {};
   REFINE_RECIPES.forEach(r => {
@@ -1636,11 +1648,6 @@ function updateInventoryDisplay() {
 
       const obtainedLabel = `<span class="inv-count">所持<span class="inv-num">${fmt(held)}</span></span><span class="inv-obtained">累計<span class="inv-num">${fmt(obtained)}</span></span>`;
 
-      const recipes = ITEM_RECIPE_MAP[item.id];
-      const recipesHtml = recipes
-        ? `<div class="inv-recipes">使い道: ${recipes.join("・")}</div>`
-        : "";
-
       return `<div class="inv-entry">
         <div class="inv-row">
           <span class="inv-name">${item.name}</span>
@@ -1652,7 +1659,7 @@ function updateInventoryDisplay() {
           <span class="inv-cur-bonus">現在: ${curText}</span>
           ${nextText}
         </div>
-        ${recipesHtml}
+        ${recipeHintHtml(ITEM_RECIPE_MAP[item.id] || [])}
       </div>`;
     });
   elInventory.innerHTML = entries.length

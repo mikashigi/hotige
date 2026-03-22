@@ -1099,10 +1099,26 @@ html, body {
 .inv-cur-bonus  { color: #3a6820; }
 .inv-next-bonus { color: #8a6800; }
 
-.inv-recipes {
+.recipe-hint {
+  padding-left: 2px;
+}
+.recipe-hint-btn {
+  font-size: 0.6rem;
+  color: #7766aa;
+  background: none;
+  border: 1px solid #b8a8e0;
+  border-radius: 8px;
+  padding: 1px 7px;
+  cursor: pointer;
+  line-height: 1.6;
+}
+.recipe-hint-btn::after { content: " ▾"; }
+.recipe-hint-btn.open::after { content: " ▴"; }
+.recipe-hint-btn:hover { background: #ede8f8; }
+.recipe-hint-body {
   font-size: 0.62rem;
   color: #7766aa;
-  padding-left: 2px;
+  padding: 2px 4px 0;
 }
 
 .tier-badge {
