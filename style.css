@@ -1102,8 +1102,8 @@ html, body {
 /* --- ℹ アイコンボタン（カード右下） --- */
 .inv-entry         { position: relative; padding-bottom: 22px; }
 .inv-entry:last-child { padding-bottom: 22px; }
-.book-item-card    { position: relative; padding-bottom: 28px; }
-.book-monster-card { position: relative; padding-bottom: 28px; }
+.book-item-card    { position: relative; }
+.book-monster-card { position: relative; }
 
 .info-icon-btn {
   position: absolute;
@@ -2276,7 +2276,7 @@ html, body {
   background: var(--stat-bg);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  padding: 7px 10px;
+  padding: 7px 26px 28px 10px; /* right: ℹボタン分, bottom: ℹボタン分 */
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -2447,7 +2447,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 6px 4px;
+  padding: 6px 4px 28px; /* bottom: ℹボタン分 */
   gap: 2px;
   background: var(--stat-bg);
   border: 1px solid var(--border-light);
