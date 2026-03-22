@@ -1130,6 +1130,10 @@ html, body {
   from { transform: scale(0.65); opacity: 0; }
   to   { transform: scale(1);    opacity: 1; }
 }
+@keyframes popoverOut {
+  from { transform: scale(1);    opacity: 1; }
+  to   { transform: scale(0.65); opacity: 0; }
+}
 
 #item-info-popup {
   position: fixed;
@@ -1147,6 +1151,10 @@ html, body {
 #item-info-popup.open {
   display: flex;
   animation: popoverIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+#item-info-popup.closing {
+  animation: popoverOut 0.15s cubic-bezier(0.55, 0, 0.78, 0) forwards;
+  pointer-events: none;
 }
 .ipu-name {
   font-weight: bold;
@@ -1177,6 +1185,30 @@ html, body {
 .ipu-drop-name   { color: #333; }
 .ipu-drop-pct    { color: #5577aa; font-size: 0.7rem; }
 .ipu-drop-recipe { font-size: 0.68rem; color: #7766aa; }
+.ipu-recipe-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 1px 0;
+}
+.ipu-recipe-link {
+  background: none;
+  border: none;
+  color: #7766aa;
+  font-size: 0.76rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-align: left;
+}
+.ipu-recipe-link:hover { color: #aa66dd; }
+.ipu-craft-badge {
+  font-size: 0.62rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.ipu-craft-badge.ok { color: #3a8a20; }
+.ipu-craft-badge.ng { color: #cc4444; }
 
 .tier-badge {
   font-size: 0.62rem;
@@ -1504,6 +1536,11 @@ html, body {
   border-radius: 8px;
   padding: 6px 8px;
   background: var(--panel-bg);
+  transition: background 0.3s, border-color 0.3s;
+}
+.refine-recipe-row.refine-highlight {
+  background: rgba(180, 140, 255, 0.18);
+  border-color: #9966cc;
 }
 
 .refine-recipe-row.refining {

@@ -1250,7 +1250,7 @@ function updateRefineDisplay() {
     const outTier  = getItemTier(outHave);
     const tierStr  = outTier > 0 ? ` / Tier${outTier}` : "";
     html += `
-      <div class="refine-recipe-row${isActive ? " refining" : ""}">
+      <div class="refine-recipe-row${isActive ? " refining" : ""}" id="refine-row-${recipe.id}">
         <div class="refine-recipe-info">
           <div class="refine-recipe-name">${recipe.name}</div>
           <div class="refine-ingredients">${chipsHtml}</div>
@@ -1603,7 +1603,7 @@ let _popoverTrigger = null;
 
 function _showPopover(html, triggerEl) {
   const pop = document.getElementById("item-info-popup");
-  pop.classList.remove("open");
+  pop.classList.remove("open", "closing");
   pop.removeAttribute("style");
   document.getElementById("item-info-content").innerHTML = html;
 
@@ -1647,45 +1647,78 @@ function _showPopover(html, triggerEl) {
   setTimeout(() => document.addEventListener("click", _popoverCloseHandler, true), 0);
 }
 
+function _recipeRows(recipes) {
+  if (!recipes) return `<div class="ipu-no-recipe">精製には使いません</div>`;
+  return recipes.map(r => {
+    const ok = canRefine(r);
+    return `<div class="ipu-recipe-row">
+      <button class="ipu-recipe-link" onclick="openRefineAtRecipe('${r.id}')">${r.name}</button>
+      <span class="ipu-craft-badge ${ok ? 'ok' : 'ng'}">${ok ? '✓' : '✗'}</span>
+    </div>`;
+  }).join("");
+}
+
 function showItemInfoPopup(itemId, e) {
   e.stopPropagation();
-  if (_popoverTrigger === e.currentTarget) { closeItemInfoPopup(); return; }
+  if (_popoverTrigger === e.currentTarget) { closeItemInfoPopup(true); return; }
   const item = ITEM_MAP[itemId];
   if (!item) return;
-  const recipes = ITEM_RECIPE_MAP[itemId];
-  const recipeStr = recipes
-    ? `<div class="ipu-recipes"><span class="ipu-label">使い道</span>${recipes.join("・")}</div>`
-    : `<div class="ipu-recipes ipu-no-recipe">精製には使いません</div>`;
+  const recipes = ITEM_RECIPE_FULL_MAP[itemId];
   _showPopover(`
     <div class="ipu-name">${item.name}</div>
     <div class="ipu-stats"><span class="ipu-label">基本効果</span>${statStr(item)}</div>
-    ${recipeStr}`, e.currentTarget);
+    <div class="ipu-recipes"><span class="ipu-label">使い道</span>${_recipeRows(recipes)}</div>`,
+    e.currentTarget);
 }
 
 function showDropsInfoPopup(dropsJson, e) {
   e.stopPropagation();
-  if (_popoverTrigger === e.currentTarget) { closeItemInfoPopup(); return; }
+  if (_popoverTrigger === e.currentTarget) { closeItemInfoPopup(true); return; }
   const drops = JSON.parse(dropsJson);
   const rows = drops.map(d => {
     const item    = ITEM_MAP[d.itemId];
     const name    = item?.name ?? d.itemId;
     const pct     = Math.round(d.rate * 100);
-    const recipes = ITEM_RECIPE_MAP[d.itemId];
-    const recipeStr = recipes ? `<span class="ipu-drop-recipe">→ ${recipes.join("・")}</span>` : "";
-    return `<div class="ipu-drop-row"><span class="ipu-drop-name">${name} <span class="ipu-drop-pct">${pct}%</span></span>${recipeStr}</div>`;
+    const recipes = ITEM_RECIPE_FULL_MAP[d.itemId];
+    return `<div class="ipu-drop-row">
+      <span class="ipu-drop-name">${name} <span class="ipu-drop-pct">${pct}%</span></span>
+      ${_recipeRows(recipes)}
+    </div>`;
   }).join("");
   _showPopover(`<div class="ipu-name">ドロップアイテム</div>${rows}`, e.currentTarget);
 }
 
-function closeItemInfoPopup() {
+function closeItemInfoPopup(animated = false) {
   const pop = document.getElementById("item-info-popup");
-  pop.classList.remove("open");
-  pop.removeAttribute("style");
   _popoverTrigger = null;
   if (_popoverCloseHandler) {
     document.removeEventListener("click", _popoverCloseHandler, true);
     _popoverCloseHandler = null;
   }
+  if (animated && pop.classList.contains("open")) {
+    pop.classList.add("closing");
+    pop.addEventListener("animationend", () => {
+      if (pop.classList.contains("closing")) {
+        pop.classList.remove("open", "closing");
+        pop.removeAttribute("style");
+      }
+    }, { once: true });
+  } else {
+    pop.classList.remove("open", "closing");
+    pop.removeAttribute("style");
+  }
+}
+
+function openRefineAtRecipe(recipeId) {
+  closeItemInfoPopup(false);
+  switchTab('pane-refine');
+  requestAnimationFrame(() => {
+    const row = document.getElementById("refine-row-" + recipeId);
+    if (!row) return;
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    row.classList.add("refine-highlight");
+    setTimeout(() => row.classList.remove("refine-highlight"), 1500);
+  });
 }
 
 function itemInfoIcon(itemId) {
@@ -1696,12 +1729,12 @@ function dropInfoIcon(drops) {
   return `<button class="info-icon-btn" onclick="showDropsInfoPopup('${json}',event)">${SVG_INFO}</button>`;
 }
 
-const ITEM_RECIPE_MAP = (() => {
+const ITEM_RECIPE_FULL_MAP = (() => {
   const map = {};
   REFINE_RECIPES.forEach(r => {
     r.inputs.forEach(inp => {
       if (!map[inp.itemId]) map[inp.itemId] = [];
-      map[inp.itemId].push(r.name);
+      map[inp.itemId].push(r);
     });
   });
   return map;
