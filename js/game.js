@@ -1665,7 +1665,7 @@ function showItemInfoPopup(itemId, e) {
   if (!item) return;
   const recipes = ITEM_RECIPE_FULL_MAP[itemId];
   _showPopover(`
-    <div class="ipu-name">${item.name}</div>
+    <div class="ipu-name">${item.icon ?? ''} ${item.name}</div>
     <div class="ipu-stats"><span class="ipu-label">基本効果</span>${statStr(item)}</div>
     <div class="ipu-recipes"><span class="ipu-label">使い道</span>${_recipeRows(recipes)}</div>`,
     e.currentTarget);
@@ -1677,7 +1677,7 @@ function showDropsInfoPopup(dropsJson, e) {
   const drops = JSON.parse(dropsJson);
   const rows = drops.map(d => {
     const item    = ITEM_MAP[d.itemId];
-    const name    = item?.name ?? d.itemId;
+    const name    = item ? `${item.icon ?? ''} ${item.name}` : d.itemId;
     const pct     = Math.round(d.rate * 100);
     const recipes = ITEM_RECIPE_FULL_MAP[d.itemId];
     return `<div class="ipu-drop-row">
@@ -1772,7 +1772,7 @@ function updateInventoryDisplay() {
 
       return `<div class="inv-entry">
         <div class="inv-row">
-          <span class="inv-name">${item.name}</span>
+          <span class="inv-name">${item.icon ?? ''} ${item.name}</span>
           ${tierBadge}
           ${obtainedLabel}
           ${nextHint}

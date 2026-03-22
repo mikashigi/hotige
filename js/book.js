@@ -45,7 +45,7 @@ function renderItemBook() {
 
     return `<div class="book-item-card ${unseen ? "unseen" : ""}">
       <div class="book-item-head">
-        <span class="book-item-name">${unseen ? "???" : item.name}</span>
+        <span class="book-item-name">${unseen ? "???" : `${item.icon ?? ''} ${item.name}`}</span>
         ${!unseen ? `<span class="tier-badge tier-${tier}">${TIER_LABELS[tier]}</span>` : ""}
         <span class="book-item-count">${unseen ? "未入手" : `×${count}`}</span>
       </div>
