@@ -1603,15 +1603,20 @@ let _popoverCloseHandler = null;
 function _showPopover(html, triggerEl) {
   const pop = document.getElementById("item-info-popup");
   pop.classList.remove("open");
+  pop.removeAttribute("style");
   document.getElementById("item-info-content").innerHTML = html;
 
   // 一時表示してサイズ取得
-  pop.style.cssText = "display:flex; visibility:hidden;";
+  pop.style.visibility = "hidden";
+  pop.style.display = "flex";
   const pw = pop.offsetWidth;
   const ph = pop.offsetHeight;
+  pop.style.display = "";
+  pop.style.visibility = "";
+
   const rect = triggerEl.getBoundingClientRect();
 
-  // ボタンの上 or 下どちらに出すか
+  // 上下：ボタンの上に出せるなら上、無理なら下
   let top, originY;
   if (rect.top - ph - 8 >= 8) {
     top = rect.top - ph - 8;
@@ -1621,12 +1626,14 @@ function _showPopover(html, triggerEl) {
     originY = "top";
   }
 
-  // 左右位置（ボタンの右端に合わせ、はみ出し防止）
+  // 左右：ポップアップ右端 = ボタン右端（はみ出し防止）
   let left = rect.right - pw;
   left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
-  const originX = left <= rect.left ? "left" : "right";
 
-  pop.style.cssText = `display:flex; left:${left}px; top:${top}px; transform-origin:${originX} ${originY};`;
+  // ボタンは常にポップアップの右端にあるので transform-origin は右起点
+  pop.style.left = left + "px";
+  pop.style.top  = top  + "px";
+  pop.style.transformOrigin = `right ${originY}`;
   pop.classList.add("open");
 
   if (_popoverCloseHandler) document.removeEventListener("click", _popoverCloseHandler);
