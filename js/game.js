@@ -1595,6 +1595,18 @@ function statStr(obj, prefix = "") {
     .join(" ") || "—";
 }
 
+// アイテムID → 使用レシピ名リストの逆引きマップ
+const ITEM_RECIPE_MAP = (() => {
+  const map = {};
+  REFINE_RECIPES.forEach(r => {
+    r.inputs.forEach(inp => {
+      if (!map[inp.itemId]) map[inp.itemId] = [];
+      map[inp.itemId].push(r.name);
+    });
+  });
+  return map;
+})();
+
 function updateInventoryDisplay() {
   const TIER_LABELS = ["", "T1", "T2", "T3"];
   const entries = ITEMS
@@ -1624,6 +1636,11 @@ function updateInventoryDisplay() {
 
       const obtainedLabel = `<span class="inv-count">所持<span class="inv-num">${fmt(held)}</span></span><span class="inv-obtained">累計<span class="inv-num">${fmt(obtained)}</span></span>`;
 
+      const recipes = ITEM_RECIPE_MAP[item.id];
+      const recipesHtml = recipes
+        ? `<div class="inv-recipes">使い道: ${recipes.join("・")}</div>`
+        : "";
+
       return `<div class="inv-entry">
         <div class="inv-row">
           <span class="inv-name">${item.name}</span>
@@ -1635,6 +1652,7 @@ function updateInventoryDisplay() {
           <span class="inv-cur-bonus">現在: ${curText}</span>
           ${nextText}
         </div>
+        ${recipesHtml}
       </div>`;
     });
   elInventory.innerHTML = entries.length
