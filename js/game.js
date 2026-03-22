@@ -124,6 +124,7 @@ const state = {
   totalShopBuys:   0,
   rareKills:       0,
   mapsCleared:     0,
+  bestMapIndex:    0,
   consumables:     {},
   pendingBatch:    false, // 一括チケット使用中フラグ（次マップ到達で発動、死亡で返却）
   batchFromTicket: false, // 一括討伐がチケット起動かどうか（死亡時に返却判定）
@@ -536,6 +537,7 @@ function checkMultiComplete() {
   state.mapIndex++;
   if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
   state.mapsCleared++;
+  state.bestMapIndex = Math.max(state.bestMapIndex, state.mapIndex);
   addSystemLog(`★ マップ連闘クリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
   checkAchievements();
   updateConsumableDisplay();
@@ -756,6 +758,7 @@ function _finishEnemyKill() {
     state.mapIndex++;
     if (state.mapIndex >= MAP_DEFS.length) { gameClear(); return; }
     state.mapsCleared++;
+    state.bestMapIndex = Math.max(state.bestMapIndex, state.mapIndex);
     addSystemLog(`★ マップクリア！ 「${MAP_DEFS[state.mapIndex].name}」へ！`);
     checkAchievements();
     clearInterval(attackIntervalId);

@@ -35,6 +35,7 @@ function saveData() {
     totalShopBuys:   state.totalShopBuys,
     rareKills:       state.rareKills,
     mapsCleared:     state.mapsCleared,
+    bestMapIndex:    state.bestMapIndex,
     consumables:     state.consumables,
     pendingBatch:    state.pendingBatch,
     batchFromTicket: state.batchFromTicket,
@@ -80,6 +81,7 @@ function loadGame() {
   state.totalShopBuys   = data.totalShopBuys   ?? 0;
   state.rareKills       = data.rareKills       ?? 0;
   state.mapsCleared     = data.mapsCleared     ?? 0;
+  state.bestMapIndex    = data.bestMapIndex    ?? state.mapIndex;
   state.consumables     = data.consumables     || {};
   state.pendingBatch    = data.pendingBatch    || false;
   state.batchFromTicket = data.batchFromTicket || false;
@@ -100,11 +102,10 @@ function loadGame() {
 
   // オフラインボーナス計算（前回セーブから60秒以上経過していた場合）
   if (data.lastSavedAt) {
-    const offlineSecs = Math.min((Date.now() - data.lastSavedAt) / 1000, 28800); // 最大8時間
+    const offlineSecs = Math.min((Date.now() - data.lastSavedAt) / 1000, 43200); // 最大12時間
     if (offlineSecs >= 60) {
-      const mult       = Math.pow(2, state.mapIndex);
-      const si         = state.stageInMap;
-      const goldPerSec = 5 * mult * (1 + si * 0.1) * 0.5; // 50%効率
+      const mult       = Math.pow(2, state.bestMapIndex);
+      const goldPerSec = 5 * mult * 0.5; // 最高到達マップ基準・50%効率
       const bonus      = Math.max(1, Math.floor(offlineSecs * goldPerSec));
       state.gold            += bonus;
       state.totalGoldEarned += bonus;
