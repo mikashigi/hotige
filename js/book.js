@@ -51,7 +51,8 @@ function renderItemBook() {
       </div>
       ${!unseen ? `
       <div class="book-base-stats">基本: ${statStr(item)}</div>
-      <div class="book-tier-list">${tierRows}</div>` : ""}
+      <div class="book-tier-list">${tierRows}</div>
+      ${ITEM_RECIPE_MAP[item.id] ? `<div class="inv-recipes">使い道: ${ITEM_RECIPE_MAP[item.id].join("・")}</div>` : ""}` : ""}
     </div>`;
   }).join("");
 
