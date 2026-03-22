@@ -3161,8 +3161,9 @@ html, body {
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  min-width: 90px;
-  max-width: 120px;
+  width: 100px;
+  flex-shrink: 0;
+  box-sizing: border-box;
   text-align: center;
   transition: border-color 0.2s, background 0.2s;
 }
