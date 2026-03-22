@@ -1111,9 +1111,8 @@ html, body {
   right: 5px;
   width: 18px;
   height: 18px;
-  border-radius: 50%;
   border: none;
-  background: rgba(119, 102, 170, 0.18);
+  background: transparent;
   color: #7766aa;
   cursor: pointer;
   display: flex;
@@ -1121,9 +1120,10 @@ html, body {
   justify-content: center;
   padding: 0;
   line-height: 1;
-  transition: background 0.15s;
+  opacity: 0.7;
+  transition: opacity 0.15s;
 }
-.info-icon-btn:hover { background: rgba(119, 102, 170, 0.38); }
+.info-icon-btn:hover { opacity: 1; }
 
 /* --- アイテム情報ポップオーバー --- */
 @keyframes popoverIn {

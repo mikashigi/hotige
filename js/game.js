@@ -1636,11 +1636,11 @@ function _showPopover(html, triggerEl) {
   pop.style.transformOrigin = `right ${originY}`;
   pop.classList.add("open");
 
-  if (_popoverCloseHandler) document.removeEventListener("click", _popoverCloseHandler);
+  if (_popoverCloseHandler) document.removeEventListener("click", _popoverCloseHandler, true);
   _popoverCloseHandler = ev => {
     if (!pop.contains(ev.target)) closeItemInfoPopup();
   };
-  setTimeout(() => document.addEventListener("click", _popoverCloseHandler), 0);
+  setTimeout(() => document.addEventListener("click", _popoverCloseHandler, true), 0);
 }
 
 function showItemInfoPopup(itemId, e) {
@@ -1674,8 +1674,9 @@ function showDropsInfoPopup(dropsJson, e) {
 function closeItemInfoPopup() {
   const pop = document.getElementById("item-info-popup");
   pop.classList.remove("open");
+  pop.removeAttribute("style");
   if (_popoverCloseHandler) {
-    document.removeEventListener("click", _popoverCloseHandler);
+    document.removeEventListener("click", _popoverCloseHandler, true);
     _popoverCloseHandler = null;
   }
 }
@@ -1684,7 +1685,7 @@ function itemInfoIcon(itemId) {
   return `<button class="info-icon-btn" onclick="showItemInfoPopup('${itemId}',event)">${SVG_INFO}</button>`;
 }
 function dropInfoIcon(drops) {
-  const json = JSON.stringify(drops).replace(/'/g, "&#39;");
+  const json = JSON.stringify(drops).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   return `<button class="info-icon-btn" onclick="showDropsInfoPopup('${json}',event)">${SVG_INFO}</button>`;
 }
 
