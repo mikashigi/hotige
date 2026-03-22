@@ -161,6 +161,10 @@
             <span class="tab-label">精製</span>
             <span class="tab-badge" id="refine-badge"></span>
           </button>
+          <button class="tab-btn" data-target="pane-skills" onclick="switchTab('pane-skills')">
+            <span class="tab-icon">✨</span>
+            <span class="tab-label">スキル</span>
+          </button>
         </div>
         <div id="panel-content">
           <!-- アイテム -->
@@ -242,6 +246,10 @@
                 </div>
               </div>
             </div>
+          </div>
+          <!-- スキルツリー -->
+          <div class="tab-pane" id="pane-skills">
+            <div id="skill-content"></div>
           </div>
           <!-- 精製 -->
           <div class="tab-pane" id="pane-refine">
@@ -326,6 +334,7 @@
   <script src="js/data/consumables.js"></script>
   <script src="js/data/maps.js"></script>
   <script src="js/data/shop.js"></script>
+  <script src="js/data/skills.js"></script>
   <script src="js/data/refine.js"></script>
   <script src="js/data/achievements.js"></script>
   <script src="js/save.js"></script>

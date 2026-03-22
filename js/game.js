@@ -129,6 +129,7 @@ const state = {
   pendingBatch:    false, // 一括チケット使用中フラグ（次マップ到達で発動、死亡で返却）
   batchFromTicket: false, // 一括討伐がチケット起動かどうか（死亡時に返却判定）
   clearPoints:     0,    // ゲームクリア周回数
+  skills:          {},   // { skillId: true } 解放済みスキル
 };
 
 // --- 定数 ---
@@ -739,7 +740,7 @@ function _finishEnemyKill() {
   if (state.cleared) return;
   stopEnemyAttack();
   const defeatedEnemy = state.currentEnemy;
-  const earned = Math.floor(defeatedEnemy.gold * (0.75 + Math.random() * 0.5));
+  const earned = Math.floor(defeatedEnemy.gold * (0.75 + Math.random() * 0.5) * (1 + getSkillEffect().goldGain));
   state.gold += earned;
   state.totalGoldEarned += earned;
   if (defeatedEnemy.isRare) state.rareKills++;
@@ -866,7 +867,7 @@ function tickMulti(s) {
 
   // 討伐確定
   e._counted = true;
-  const earned = Math.floor(e.gold * (0.75 + Math.random() * 0.5));
+  const earned = Math.floor(e.gold * (0.75 + Math.random() * 0.5) * (1 + getSkillEffect().goldGain));
   state.gold += earned;
   state.totalGoldEarned += earned;
   if (e.isRare) state.rareKills++;
@@ -1057,6 +1058,60 @@ function updateShopDisplay() {
   }
 }
 
+function unlockSkill(id) {
+  const node = SKILL_MAP[id];
+  if (!node || state.skills[id]) return;
+  if (node.requires.some(req => !state.skills[req])) return;
+  if (state.gold < node.cost) return;
+  state.gold -= node.cost;
+  state.skills[id] = true;
+  invalidateStats();
+  updateShopDisplay();
+  updateSkillDisplay();
+  updateStatsDisplay();
+  addSystemLog(`スキル「${node.name}」を習得！`);
+}
+
+function updateSkillDisplay() {
+  const el = document.getElementById("skill-content");
+  if (!el) return;
+
+  let html = "";
+  for (const cat of SKILL_CATEGORIES) {
+    const nodes = SKILL_NODES.filter(n => n.category === cat);
+    html += `<div class="skill-category"><div class="skill-cat-label">${cat}</div><div class="skill-nodes">`;
+    for (let i = 0; i < nodes.length; i++) {
+      const node    = nodes[i];
+      const unlocked = !!state.skills[node.id];
+      const reqsMet  = node.requires.every(r => state.skills[r]);
+      const canBuy   = !unlocked && reqsMet && state.gold >= node.cost;
+      const locked   = !unlocked && !reqsMet;
+      const reqNames = node.requires.map(r => SKILL_MAP[r]?.name ?? r).join("・");
+
+      let stateClass = unlocked ? "unlocked" : locked ? "locked" : canBuy ? "available" : "unaffordable";
+      html += `<div class="skill-node ${stateClass}">`;
+      html += `<div class="skill-node-icon">${node.icon}</div>`;
+      html += `<div class="skill-node-name">${node.name}</div>`;
+      html += `<div class="skill-node-desc">${node.desc}</div>`;
+      if (locked && reqNames) {
+        html += `<div class="skill-node-req">🔒 ${reqNames}</div>`;
+      }
+      if (unlocked) {
+        html += `<div class="skill-node-status">✓ 習得済み</div>`;
+      } else {
+        const costClass = canBuy ? "" : " skill-cost-ng";
+        html += `<button class="skill-btn${costClass}" ${locked || !reqsMet ? "disabled" : ""} onclick="unlockSkill('${node.id}')"><span class="skill-cost">${fmtShop(node.cost)}</span>🪙</button>`;
+      }
+      html += `</div>`;
+      if (i < nodes.length - 1 && nodes[i + 1].requires.includes(node.id)) {
+        html += `<div class="skill-arrow">▶</div>`;
+      }
+    }
+    html += `</div></div>`;
+  }
+  el.innerHTML = html;
+}
+
 function buyHeal() {
   const cost = healCost();
   if (state.gold < cost || state.playerHp >= state.playerMaxHp) return;
@@ -1118,7 +1173,7 @@ function startRefine(recipeId, count) {
   state.refine = {
     recipeId,
     elapsed:   0,
-    duration:  recipe.time * 1000,
+    duration:  Math.round(recipe.time * 1000 / (1 + getSkillEffect().refineSpeed)),
     countLeft: actualCount, // -1 = 無限
   };
   invalidateStats();
@@ -1432,7 +1487,8 @@ function toggleMute() {
 // クリアポイント補正込みのクリティカル倍率
 // critChancePct: プレイヤーのクリ率(%), critResPct: 敵のクリ耐性(%)
 function _critMult(critChancePct, critResPct) {
-  const BASE = 1.5;
+  const se   = getSkillEffect();
+  const BASE = 1.5 + se.critMult;
   if (state.clearPoints <= 0) return BASE;
   const diff = critChancePct - critResPct;
   if (diff <= 100) return BASE;
@@ -1513,7 +1569,7 @@ function computePlayerStats() {
     attackCount:       normCount,
     multiInterval,
     multiAttackCount:  multiCount,
-    critChance:        raw.luk * 0.008 + raw.int * 0.003,
+    critChance:        raw.luk * 0.008 + raw.int * 0.003 + getSkillEffect().critRate,
   };
   return _cachedStats;
 }
@@ -1522,9 +1578,23 @@ function computePlayerStats() {
 let attackIntervalId = null;
 let _lastInterval = -1;
 let _cachedStats = null;
+let _cachedSkillEffect = null;
+
+function getSkillEffect() {
+  if (_cachedSkillEffect) return _cachedSkillEffect;
+  const eff = { dropRate: 0, consumableRate: 0, critMult: 0, critRate: 0, refineSpeed: 0, goldGain: 0 };
+  for (const id of Object.keys(state.skills)) {
+    const node = SKILL_MAP[id];
+    if (!node) continue;
+    for (const [k, v] of Object.entries(node.effect)) eff[k] += v;
+  }
+  _cachedSkillEffect = eff;
+  return eff;
+}
 
 function invalidateStats() {
   _cachedStats = null;
+  _cachedSkillEffect = null;
 }
 
 function resetAttackInterval(s) {
@@ -1810,20 +1880,23 @@ function _grantItem(itemId) {
 }
 
 function rollDrops(enemy) {
+  const se = getSkillEffect();
   enemy.drops.forEach(drop => {
-    if (Math.random() < drop.rate) _grantItem(drop.itemId);
+    const rate = Math.min(1, drop.rate * (1 + se.dropRate));
+    if (Math.random() < rate) _grantItem(drop.itemId);
   });
 
   // 一括チケット：全モンスター共有低確率ドロップ
+  const cm = 1 + se.consumableRate;
   const ticketRate = enemy.isBoss ? 0.08 : enemy.isRare ? 0.05 : 0.02;
-  if (Math.random() < ticketRate) _grantConsumable("batch_ticket");
+  if (Math.random() < Math.min(1, ticketRate * cm)) _grantConsumable("batch_ticket");
 
   // 消費アイテム共有ドロップ
   const bombRate = enemy.isBoss ? 0.12 : enemy.isRare ? 0.07 : 0.03;
-  if (Math.random() < bombRate) _grantConsumable("bomb_herb");
+  if (Math.random() < Math.min(1, bombRate * cm)) _grantConsumable("bomb_herb");
 
   const smokeRate = enemy.isBoss ? 0.10 : enemy.isRare ? 0.05 : 0.02;
-  if (Math.random() < smokeRate) _grantConsumable("smoke_ball");
+  if (Math.random() < Math.min(1, smokeRate * cm)) _grantConsumable("smoke_ball");
 }
 
 // --- 消費アイテム ---
@@ -2186,6 +2259,7 @@ function init() {
   updateConsumableDisplay();
   updateShopDisplay();
   updateRefineDisplay();
+  updateSkillDisplay();
 
   if (loaded && state.cleared) gameClear();
   else                         spawnEnemy();

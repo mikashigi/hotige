@@ -3114,6 +3114,138 @@ html, body {
   100% { background: rgba(220,200,0,0); }
 }
 
+/* ========== スキルツリー ========== */
+#skill-content {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skill-category {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skill-cat-label {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.skill-nodes {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.skill-arrow {
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.skill-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  min-width: 90px;
+  max-width: 120px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.skill-node.unlocked {
+  background: rgba(80, 200, 120, 0.12);
+  border-color: #50c878;
+}
+
+.skill-node.available {
+  background: rgba(255, 200, 50, 0.10);
+  border-color: var(--yellow);
+}
+
+.skill-node.locked {
+  opacity: 0.5;
+}
+
+.skill-node.unaffordable {
+  opacity: 0.75;
+}
+
+.skill-node-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.skill-node-name {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--text);
+}
+
+.skill-node-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.skill-node-req {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.skill-node-status {
+  font-size: 10px;
+  color: #50c878;
+  font-weight: bold;
+}
+
+.skill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 3px 8px;
+  background: var(--yellow);
+  color: #7a5a00;
+  border: 1.5px solid var(--yellow-dark);
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.skill-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.skill-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.skill-btn .skill-cost {
+  font-variant-numeric: tabular-nums;
+}
+
+.skill-cost-ng .skill-cost {
+  color: #c06060;
+}
+
 /* 超大当たりフラッシュ */
 .lk-super-flash {
   animation: lkSuperFlash 0.5s ease;
