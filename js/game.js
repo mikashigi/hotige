@@ -148,10 +148,10 @@ const SAVE_ICONS = [
 
 // パネルアイコン: src に画像パスを設定すると画像表示、空なら alt のテキストを表示
 const PANEL_ICONS = {
-  "pi-player":    { src: "", alt: "能" }, // 例: "img/icon/status.png"
-  "pi-inventory": { src: "", alt: "荷" }, // 例: "img/icon/bag.png"
-  "pi-shop":      { src: "", alt: "店" }, // 例: "img/icon/shop.png"
-  "pi-refine":    { src: "", alt: "精" }, // 例: "img/icon/refine.png"
+  "pi-player":    { src: "", alt: "⚔️" }, // 例: "img/icon/status.png"
+  "pi-inventory": { src: "", alt: "🎒" }, // 例: "img/icon/bag.png"
+  "pi-shop":      { src: "", alt: "🏪" }, // 例: "img/icon/shop.png"
+  "pi-refine":    { src: "", alt: "⚗️" }, // 例: "img/icon/refine.png"
 };
 
 // --- DOM 参照 ---
