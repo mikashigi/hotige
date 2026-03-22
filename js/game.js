@@ -1217,13 +1217,14 @@ function updateRefineDisplay() {
   // 精製中エリア
   if (state.refine) {
     const recipe  = REFINE_RECIPES.find(r => r.id === state.refine.recipeId);
+    const activeOutItem = recipe ? ITEM_MAP[recipe.output.itemId] : null;
     const pct     = Math.min(100, (state.refine.elapsed / state.refine.duration) * 100);
     const remain  = ((state.refine.duration - state.refine.elapsed) / 1000).toFixed(1);
     const clLabel = state.refine.countLeft === -1 ? "∞" : `残り ${state.refine.countLeft}回`;
     html += `
       <div class="refine-active">
         <div class="refine-active-info">
-          <span class="refine-active-name">${recipe?.name ?? ""}</span>
+          <span class="refine-active-name">${activeOutItem?.icon ?? ''} ${recipe?.name ?? ""}</span>
           <span class="refine-active-count">${clLabel}</span>
           <button class="refine-cancel-btn" onclick="cancelRefine()">✕ キャンセル</button>
         </div>
@@ -1240,19 +1241,20 @@ function updateRefineDisplay() {
     const chipsHtml = recipe.inputs.map(inp => {
       const have   = state.inventory[inp.itemId] || 0;
       const enough = have >= inp.count;
-      const name   = ITEM_MAP[inp.itemId]?.name ?? inp.itemId;
+      const inpItem = ITEM_MAP[inp.itemId];
+      const name   = (inpItem?.icon ? inpItem.icon + ' ' : '') + (inpItem?.name ?? inp.itemId);
       return `<span class="refine-chip${enough ? "" : " missing"}">${name}×${inp.count}<span class="refine-chip-have">(<span class="refine-num">${have}</span>)</span></span>`;
     }).join("");
 
     const outItem  = ITEM_MAP[recipe.output.itemId];
-    const outName  = outItem?.name ?? recipe.output.itemId;
+    const outName  = (outItem?.icon ? outItem.icon + ' ' : '') + (outItem?.name ?? recipe.output.itemId);
     const outHave  = state.inventory[recipe.output.itemId] || 0;
     const outTier  = getItemTier(outHave);
     const tierStr  = outTier > 0 ? ` / Tier${outTier}` : "";
     html += `
       <div class="refine-recipe-row${isActive ? " refining" : ""}" id="refine-row-${recipe.id}">
         <div class="refine-recipe-info">
-          <div class="refine-recipe-name">${recipe.name}</div>
+          <div class="refine-recipe-name">${outItem?.icon ?? ''} ${recipe.name}</div>
           <div class="refine-ingredients">${chipsHtml}</div>
           <div class="refine-output">→ ${outName} ×${recipe.output.count}　${recipe.time}秒　<span class="refine-out-have">所持: ${outHave}${tierStr}</span></div>
         </div>
