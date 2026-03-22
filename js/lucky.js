@@ -515,7 +515,7 @@ function _animateSuperReel(el, cb) {
     const chance = Math.pow(1 - progress, 1.2);
     if (Math.random() < Math.max(chance, 0.07)) {
       const r = Math.floor(Math.random() * (multMax - multMin + 1)) + multMin;
-      el.textContent = `${r}×`;
+      _reelSetValue(el, `${r}×`);
       _playLuckySfx('spin_tick');
     }
   }, 80);
@@ -627,40 +627,55 @@ function _luckyRevival() {
   }, 500);
 }
 
+// リールに値をセットしてスライドアニメを再生
+function _reelSetValue(el, text) {
+  el.textContent = text;
+  el.style.animation = 'none';
+  // 強制リフロー後に再セットしてアニメをリスタート
+  void el.offsetWidth;
+  el.style.animation = 'lkReelSlide 0.07s ease-out';
+}
+
 function _animateLuckyReel(el, isBase, finalVal, cb, duration = 1500) {
   // finalVal: 数値(当選) | null(はずれ)
   const min = isBase ? LUCKY_CONFIG.tiers[_luckyTierIdx].baseMin : LUCKY_CONFIG.multTable[0][0];
   const max = isBase ? LUCKY_CONFIG.tiers[_luckyTierIdx].baseMax : LUCKY_CONFIG.multTable[LUCKY_CONFIG.multTable.length - 1][0];
-  const startTime = Date.now();
+  const startTime = performance.now();
+  let lastUpdate = 0;
   el.classList.remove('lk-reel-land', 'lk-reel-miss', 'lk-reel-super');
   el.classList.add('lk-reel-spinning');
 
-  const timer = setInterval(() => {
-    const elapsed  = Date.now() - startTime;
-    const progress = elapsed / duration;
+  const frame = (now) => {
+    const elapsed  = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
 
     if (progress >= 1) {
-      clearInterval(timer);
       el.classList.remove('lk-reel-spinning');
+      el.style.animation = '';
       if (finalVal !== null) {
-        el.textContent = isBase ? `${finalVal}` : `${finalVal}×`;
+        _reelSetValue(el, isBase ? `${finalVal}` : `${finalVal}×`);
         el.classList.add('lk-reel-land');
       } else {
-        el.textContent = 'はずれ';
+        _reelSetValue(el, 'はずれ');
         el.classList.add('lk-reel-miss');
       }
       setTimeout(cb, 450);
       return;
     }
 
-    // 徐々にスロー: progress が大きくなるほど数字が変わりにくくなる
-    const chance = Math.pow(1 - progress, 1.2);
-    if (Math.random() < Math.max(chance, 0.07)) {
+    // 高速(40ms)→低速(220ms)へ滑らかに変化
+    const interval = 40 + 180 * Math.pow(progress, 1.6);
+    if (now - lastUpdate >= interval) {
       const r = Math.floor(Math.random() * (max - min + 1)) + min;
-      el.textContent = isBase ? `${r}` : `${r}×`;
+      _reelSetValue(el, isBase ? `${r}` : `${r}×`);
       _playLuckySfx('spin_tick');
+      lastUpdate = now;
     }
-  }, 80);
+
+    requestAnimationFrame(frame);
+  };
+
+  requestAnimationFrame(frame);
 }
 
 function luckyClaim() {
