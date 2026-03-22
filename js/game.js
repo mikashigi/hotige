@@ -183,8 +183,7 @@ const elInfoHit         = document.getElementById("info-hit");
 const elInfoSpd         = document.getElementById("info-spd");
 const elInfoCrit        = document.getElementById("info-crit");
 const elGold        = document.getElementById("gold");
-const elBtnHeal     = document.getElementById("btn-heal");
-const elHealCost    = document.getElementById("shop-heal-cost");
+// btn-heal / shop-heal-cost は動的生成のため updateShopDisplay() 内で都度取得
 const elEnemyArea      = document.getElementById("enemy-area");
 const elStunTimerText  = document.getElementById("stun-timer-text");
 const elMultiGrid      = document.getElementById("multi-enemy-grid");
@@ -1044,11 +1043,40 @@ function fmtShop(n) {
 }
 
 // --- ショップ ---
+function initShopRows() {
+  const el = document.getElementById("shop-content");
+  if (!el) return;
+  let html = `
+    <div class="shop-row">
+      <div class="shop-info">
+        <span class="shop-name">${HEAL_DEF.icon} ${HEAL_DEF.name}</span>
+        <span class="shop-desc">${HEAL_DEF.desc}</span>
+      </div>
+      <button class="shop-btn" id="btn-heal" onclick="buyHeal()"><span id="shop-heal-cost" class="shop-cost">20</span>🪙</button>
+    </div>`;
+  for (const [key, def] of Object.entries(SHOP_DEFS)) {
+    html += `
+    <div class="shop-row">
+      <div class="shop-info">
+        <span class="shop-name">${def.icon} ${def.name}</span>
+        <span class="shop-desc">${def.desc}</span>
+      </div>
+      <div class="shop-btn-group">
+        <button class="shop-btn" id="btn-buy-${key}" onclick="buyShopStat('${key}',1)"><span id="shop-${key}-cost" class="shop-cost">0</span>🪙</button>
+        <button class="shop-btn shop-btn-10" id="btn-buy-${key}-10" onclick="buyShopStat('${key}',10)"><span class="shop-btn-qty">×10</span><span id="shop-${key}-cost-10" class="shop-cost">0</span>🪙</button>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
 function updateShopDisplay() {
   elGold.textContent = fmtShop(state.gold);
   const hc = healCost();
-  elHealCost.textContent = fmtShop(hc);
-  elBtnHeal.disabled = state.gold < hc || state.playerHp >= state.playerMaxHp;
+  const elHealCost = document.getElementById("shop-heal-cost");
+  const elBtnHeal  = document.getElementById("btn-heal");
+  if (elHealCost) elHealCost.textContent = fmtShop(hc);
+  if (elBtnHeal)  elBtnHeal.disabled = state.gold < hc || state.playerHp >= state.playerMaxHp;
   for (const key of Object.keys(SHOP_DEFS)) {
     const cost1  = shopStatCost(key);
     const cost10 = shopStatCostN(key, 10);
@@ -2376,6 +2404,7 @@ function init() {
   updateStatsDisplay();
   updateInventoryDisplay();
   updateConsumableDisplay();
+  initShopRows();
   updateShopDisplay();
   updateRefineDisplay();
   updateSkillDisplay();
