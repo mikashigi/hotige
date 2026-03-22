@@ -9,8 +9,11 @@ function showSaveIndicator() {
   saveIndicatorTimer = setTimeout(() => elSaveIndicator.classList.remove("show"), 1500);
 }
 
+let _pendingOfflineBonus = null; // { secs, gold }
+
 function saveData() {
   localStorage.setItem(SAVE_KEY, JSON.stringify({
+    lastSavedAt: Date.now(),
     mapIndex:     state.mapIndex,
     stageInMap:   state.stageInMap,
     attack:       state.attack,
@@ -94,6 +97,21 @@ function loadGame() {
   if (data.soundMuted  != null) soundMuted  = data.soundMuted;
   masterGain.gain.value = soundMuted ? 0 : soundVolume;
   invalidateStats();
+
+  // オフラインボーナス計算（前回セーブから60秒以上経過していた場合）
+  if (data.lastSavedAt) {
+    const offlineSecs = Math.min((Date.now() - data.lastSavedAt) / 1000, 28800); // 最大8時間
+    if (offlineSecs >= 60) {
+      const mult       = Math.pow(2, state.mapIndex);
+      const si         = state.stageInMap;
+      const goldPerSec = 5 * mult * (1 + si * 0.1) * 0.5; // 50%効率
+      const bonus      = Math.max(1, Math.floor(offlineSecs * goldPerSec));
+      state.gold            += bonus;
+      state.totalGoldEarned += bonus;
+      _pendingOfflineBonus = { secs: Math.floor(offlineSecs), gold: bonus };
+    }
+  }
+
   // 精製途中なら再開
   if (state.refine) {
     clearInterval(refineIntervalId);

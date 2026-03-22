@@ -111,8 +111,12 @@ function renderMonsterBook() {
       }).join("");
 
       const drops = enemyDef.drops
-        .map(d => `${ITEM_MAP[d.itemId]?.name ?? d.itemId}`)
-        .join("<br>");
+        .map(d => {
+          const name = ITEM_MAP[d.itemId]?.name ?? d.itemId;
+          const pct  = Math.round(d.rate * 100);
+          return `<span class="drop-row"><span class="drop-name">${name}</span><span class="drop-rate">${pct}%</span></span>`;
+        })
+        .join("");
 
       const st = computeEnemyStats(mi, enemyDef, isBoss, isRare);
       const evaSpan  = st.evasion > 0 ? `<span class="bmc-stat-eva">回避率 ${Math.round(st.evasion * 100)}%</span>` : "";

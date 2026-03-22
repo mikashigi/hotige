@@ -2039,6 +2039,24 @@ function init() {
   else                         spawnEnemy();
 
   setInterval(autoSave, 5000);
+
+  // オフラインボーナス表示
+  if (_pendingOfflineBonus) {
+    const { secs, gold } = _pendingOfflineBonus;
+    _pendingOfflineBonus = null;
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    const timeStr = h > 0 ? `${h}時間${m}分` : m > 0 ? `${m}分${s}秒` : `${s}秒`;
+    document.getElementById("offline-bonus-time").textContent = `放置時間: ${timeStr}`;
+    document.getElementById("offline-bonus-gold").textContent = `+${fmt(gold)} G`;
+    document.getElementById("offline-bonus-overlay").classList.add("active");
+    updateStatsDisplay();
+  }
+}
+
+function closeOfflineBonus() {
+  document.getElementById("offline-bonus-overlay").classList.remove("active");
 }
 
 init();
