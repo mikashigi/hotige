@@ -165,6 +165,11 @@
             <span class="tab-icon">✨</span>
             <span class="tab-label">スキル</span>
           </button>
+          <button class="tab-btn" data-target="pane-quests" onclick="switchTab('pane-quests')">
+            <span class="tab-icon">📋</span>
+            <span class="tab-label">クエスト</span>
+            <span class="tab-badge" id="quest-badge"></span>
+          </button>
         </div>
         <div id="panel-content">
           <!-- アイテム -->
@@ -246,6 +251,10 @@
                 </div>
               </div>
             </div>
+          </div>
+          <!-- クエスト -->
+          <div class="tab-pane" id="pane-quests">
+            <div id="quest-content"></div>
           </div>
           <!-- スキルツリー -->
           <div class="tab-pane" id="pane-skills">
@@ -335,6 +344,7 @@
   <script src="js/data/maps.js"></script>
   <script src="js/data/shop.js"></script>
   <script src="js/data/skills.js"></script>
+  <script src="js/data/quests.js"></script>
   <script src="js/data/refine.js"></script>
   <script src="js/data/achievements.js"></script>
   <script src="js/save.js"></script>

@@ -3114,6 +3114,128 @@ html, body {
   100% { background: rgba(220,200,0,0); }
 }
 
+/* ========== クエスト ========== */
+#quest-content {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quest-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg, transparent);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.quest-row.claimable {
+  border-color: #50c878;
+  background: rgba(80, 200, 120, 0.08);
+}
+
+.quest-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.quest-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.quest-icon {
+  font-size: 14px;
+}
+
+.quest-count {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: normal;
+  margin-left: 2px;
+}
+
+.quest-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.quest-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quest-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.quest-bar-fill {
+  height: 100%;
+  background: #50c878;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.quest-row.claimable .quest-bar-fill {
+  background: #50c878;
+  animation: questBarPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes questBarPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+.quest-progress-num {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.quest-reward {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.quest-action {
+  flex-shrink: 0;
+}
+
+.quest-claim-btn {
+  padding: 5px 10px;
+  background: #50c878;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 0.15s;
+}
+
+.quest-claim-btn:hover {
+  filter: brightness(1.1);
+}
+
 /* ========== スキルツリー ========== */
 #skill-content {
   padding: 6px 8px;

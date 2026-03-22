@@ -41,6 +41,7 @@ function saveData() {
     batchFromTicket: state.batchFromTicket,
     clearPoints:     state.clearPoints,
     skills:          state.skills,
+    quests:          state.quests,
     soundVolume,
     soundMuted,
   }));
@@ -88,6 +89,7 @@ function loadGame() {
   state.batchFromTicket = data.batchFromTicket || false;
   state.clearPoints     = data.clearPoints     ?? 0;
   state.skills          = data.skills          || {};
+  state.quests          = data.quests          || {};
   // 旧セーブの batch_ticket がステータスアイテムとして保存されていた場合の移行
   if (state.inventory['batch_ticket']) {
     state.consumables['batch_ticket'] = (state.consumables['batch_ticket'] || 0) + state.inventory['batch_ticket'];

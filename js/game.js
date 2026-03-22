@@ -130,6 +130,7 @@ const state = {
   batchFromTicket: false, // 一括討伐がチケット起動かどうか（死亡時に返却判定）
   clearPoints:     0,    // ゲームクリア周回数
   skills:          {},   // { skillId: true } 解放済みスキル
+  quests:          {},   // { questId: { completions, baseline, claimable } }
 };
 
 // --- 定数 ---
@@ -1406,6 +1407,7 @@ function switchTab(paneId) {
   });
   // 精製タブを開いたらバッジをクリア
   if (paneId === 'pane-refine') clearRefineBadge();
+  if (paneId === 'pane-quests') { const b = document.getElementById('quest-badge'); if (b) b.className = 'tab-badge'; }
 }
 
 function notifyRefineTab(type) { // type: 'success' | 'warn'
@@ -1448,6 +1450,109 @@ function checkAchievements() {
   if (newUnlocks.length > 0) {
     showAchievementToast(newUnlocks[newUnlocks.length - 1]);
   }
+  checkQuests();
+}
+
+// --- クエスト ---
+function _getQuestState(id) {
+  if (!state.quests[id]) {
+    const q = QUEST_MAP[id];
+    state.quests[id] = { completions: 0, baseline: q ? q.getValue(state) : 0, claimable: false };
+  }
+  return state.quests[id];
+}
+
+function checkQuests() {
+  let becameClaimable = false;
+  for (const quest of QUESTS) {
+    const qs = _getQuestState(quest.id);
+    if (qs.claimable) continue;
+    const progress = quest.getValue(state) - qs.baseline;
+    if (progress >= quest.target) {
+      qs.claimable = true;
+      becameClaimable = true;
+    }
+  }
+  if (becameClaimable) _notifyQuestTab();
+  updateQuestDisplay();
+}
+
+function claimQuest(id) {
+  const quest = QUEST_MAP[id];
+  const qs = _getQuestState(id);
+  if (!qs.claimable) return;
+
+  if (quest.reward.gold) {
+    state.gold += quest.reward.gold;
+    state.totalGoldEarned += quest.reward.gold;
+  }
+  if (quest.reward.item) {
+    for (let i = 0; i < quest.reward.itemCount; i++) _grantItem(quest.reward.item);
+  }
+  const rewardText = _questRewardText(quest);
+  addSystemLog(`クエスト「${quest.name}」達成！ ${rewardText}`);
+
+  qs.completions++;
+  qs.baseline = quest.getValue(state);
+  qs.claimable = false;
+
+  updateShopDisplay();
+  updateInventoryDisplay();
+  updateQuestDisplay();
+  checkAchievements();
+}
+
+function _questRewardText(quest) {
+  const parts = [];
+  if (quest.reward.gold) parts.push(`+${fmt(quest.reward.gold)}🪙`);
+  if (quest.reward.item) {
+    const item = ITEM_MAP[quest.reward.item];
+    parts.push(`${item?.icon ?? ''} ${item?.name ?? quest.reward.item} ×${quest.reward.itemCount}`);
+  }
+  return parts.join(' + ');
+}
+
+function _notifyQuestTab() {
+  const badge = document.getElementById('quest-badge');
+  if (badge && !badge.classList.contains('show')) badge.className = 'tab-badge show success';
+}
+
+function updateQuestDisplay() {
+  const el = document.getElementById("quest-content");
+  if (!el) return;
+
+  const anyClaimable = QUESTS.some(q => _getQuestState(q.id).claimable);
+  const badge = document.getElementById('quest-badge');
+  if (badge) {
+    if (anyClaimable) badge.className = 'tab-badge show success';
+    else              badge.className = 'tab-badge';
+  }
+
+  el.innerHTML = QUESTS.map(quest => {
+    const qs = _getQuestState(quest.id);
+    const raw   = quest.getValue(state) - qs.baseline;
+    const prog  = Math.min(raw, quest.target);
+    const pct   = Math.floor(prog / quest.target * 100);
+    const rewardText = _questRewardText(quest);
+    const claimable = qs.claimable;
+
+    return `<div class="quest-row${claimable ? ' claimable' : ''}">
+      <div class="quest-main">
+        <div class="quest-title"><span class="quest-icon">${quest.icon}</span>${quest.name}${qs.completions > 0 ? `<span class="quest-count">×${qs.completions}</span>` : ''}</div>
+        <div class="quest-desc">${quest.desc}</div>
+        <div class="quest-progress-wrap">
+          <div class="quest-bar"><div class="quest-bar-fill" style="width:${pct}%"></div></div>
+          <span class="quest-progress-num">${claimable ? quest.target : prog} / ${quest.target}</span>
+        </div>
+        <div class="quest-reward">報酬: ${rewardText}</div>
+      </div>
+      <div class="quest-action">
+        ${claimable
+          ? `<button class="quest-claim-btn" onclick="claimQuest('${quest.id}')">受け取る</button>`
+          : `<span></span>`}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function showAchievementToast(ach) {
@@ -2274,6 +2379,7 @@ function init() {
   updateShopDisplay();
   updateRefineDisplay();
   updateSkillDisplay();
+  updateQuestDisplay();
 
   if (loaded && state.cleared) gameClear();
   else                         spawnEnemy();
