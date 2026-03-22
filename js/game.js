@@ -1711,6 +1711,7 @@ function closeItemInfoPopup(animated = false) {
 
 function openRefineAtRecipe(recipeId) {
   closeItemInfoPopup(false);
+  closeBook();
   switchTab('pane-refine');
   requestAnimationFrame(() => {
     const row = document.getElementById("refine-row-" + recipeId);
