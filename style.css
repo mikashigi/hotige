@@ -1099,20 +1099,21 @@ html, body {
 .inv-cur-bonus  { color: #3a6820; }
 .inv-next-bonus { color: #8a6800; }
 
-/* --- ℹ アイコンボタン --- */
-.inv-entry      { position: relative; }
-.book-item-card { position: relative; }
-.book-monster-card { position: relative; }
+/* --- ℹ アイコンボタン（カード右下） --- */
+.inv-entry         { position: relative; padding-bottom: 22px; }
+.inv-entry:last-child { padding-bottom: 22px; }
+.book-item-card    { position: relative; padding-bottom: 28px; }
+.book-monster-card { position: relative; padding-bottom: 28px; }
 
 .info-icon-btn {
   position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
+  bottom: 5px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: none;
-  background: rgba(119, 102, 170, 0.15);
+  background: rgba(119, 102, 170, 0.18);
   color: #7766aa;
   cursor: pointer;
   display: flex;
@@ -1122,71 +1123,60 @@ html, body {
   line-height: 1;
   transition: background 0.15s;
 }
-.info-icon-btn:hover { background: rgba(119, 102, 170, 0.35); }
+.info-icon-btn:hover { background: rgba(119, 102, 170, 0.38); }
 
-/* --- アイテム情報ポップアップ --- */
-#item-info-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(0, 0, 0, 0.45);
-  display: none;
-  align-items: center;
-  justify-content: center;
+/* --- アイテム情報ポップオーバー --- */
+@keyframes popoverIn {
+  from { transform: scale(0.65); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
 }
-#item-info-overlay.open { display: flex; }
+
 #item-info-popup {
-  background: #fff;
-  border-radius: 14px;
-  padding: 18px 20px 14px;
-  min-width: 200px;
-  max-width: 280px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.22);
-  display: flex;
+  position: fixed;
+  z-index: 200;
+  display: none;
   flex-direction: column;
   gap: 8px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 16px 12px;
+  min-width: 180px;
+  max-width: 240px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.2), 0 1px 4px rgba(0,0,0,0.1);
+}
+#item-info-popup.open {
+  display: flex;
+  animation: popoverIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 .ipu-name {
   font-weight: bold;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   color: #332255;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 6px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
 }
 .ipu-label {
   display: block;
-  font-size: 0.6rem;
-  color: #999;
-  margin-bottom: 2px;
+  font-size: 0.58rem;
+  color: #aaa;
+  margin-bottom: 1px;
 }
-.ipu-stats { font-size: 0.8rem; color: #444; }
-.ipu-recipes { font-size: 0.8rem; color: #7766aa; }
-.ipu-no-recipe { color: #aaa; font-size: 0.75rem; }
+.ipu-stats   { font-size: 0.76rem; color: #444; }
+.ipu-recipes { font-size: 0.76rem; color: #7766aa; }
+.ipu-no-recipe { color: #bbb; font-size: 0.72rem; }
 .ipu-drop-row {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: #444;
   display: flex;
   flex-direction: column;
   gap: 1px;
   padding: 3px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #f0f0f0;
 }
 .ipu-drop-row:last-child { border-bottom: none; }
-.ipu-drop-name { color: #333; }
-.ipu-drop-pct  { color: #5577aa; font-size: 0.72rem; }
-.ipu-drop-recipe { font-size: 0.7rem; color: #7766aa; }
-#item-info-close {
-  align-self: center;
-  padding: 5px 24px;
-  border-radius: 20px;
-  border: none;
-  background: #7766aa;
-  color: #fff;
-  font-size: 0.85rem;
-  cursor: pointer;
-  margin-top: 2px;
-}
-#item-info-close:hover { background: #5544aa; }
+.ipu-drop-name   { color: #333; }
+.ipu-drop-pct    { color: #5577aa; font-size: 0.7rem; }
+.ipu-drop-recipe { font-size: 0.68rem; color: #7766aa; }
 
 .tier-badge {
   font-size: 0.62rem;

@@ -1595,24 +1595,63 @@ function statStr(obj, prefix = "") {
     .join(" ") || "—";
 }
 
-// --- アイテム情報ポップアップ ---
+// --- アイテム情報ポップオーバー ---
 const SVG_INFO = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
 
-function showItemInfoPopup(itemId) {
-  const item    = ITEM_MAP[itemId];
+let _popoverCloseHandler = null;
+
+function _showPopover(html, triggerEl) {
+  const pop = document.getElementById("item-info-popup");
+  pop.classList.remove("open");
+  document.getElementById("item-info-content").innerHTML = html;
+
+  // 一時表示してサイズ取得
+  pop.style.cssText = "display:flex; visibility:hidden;";
+  const pw = pop.offsetWidth;
+  const ph = pop.offsetHeight;
+  const rect = triggerEl.getBoundingClientRect();
+
+  // ボタンの上 or 下どちらに出すか
+  let top, originY;
+  if (rect.top - ph - 8 >= 8) {
+    top = rect.top - ph - 8;
+    originY = "bottom";
+  } else {
+    top = rect.bottom + 8;
+    originY = "top";
+  }
+
+  // 左右位置（ボタンの右端に合わせ、はみ出し防止）
+  let left = rect.right - pw;
+  left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+  const originX = left <= rect.left ? "left" : "right";
+
+  pop.style.cssText = `display:flex; left:${left}px; top:${top}px; transform-origin:${originX} ${originY};`;
+  pop.classList.add("open");
+
+  if (_popoverCloseHandler) document.removeEventListener("click", _popoverCloseHandler);
+  _popoverCloseHandler = ev => {
+    if (!pop.contains(ev.target)) closeItemInfoPopup();
+  };
+  setTimeout(() => document.addEventListener("click", _popoverCloseHandler), 0);
+}
+
+function showItemInfoPopup(itemId, e) {
+  e.stopPropagation();
+  const item = ITEM_MAP[itemId];
   if (!item) return;
   const recipes = ITEM_RECIPE_MAP[itemId];
   const recipeStr = recipes
     ? `<div class="ipu-recipes"><span class="ipu-label">使い道</span>${recipes.join("・")}</div>`
     : `<div class="ipu-recipes ipu-no-recipe">精製には使いません</div>`;
-  document.getElementById("item-info-content").innerHTML = `
+  _showPopover(`
     <div class="ipu-name">${item.name}</div>
     <div class="ipu-stats"><span class="ipu-label">基本効果</span>${statStr(item)}</div>
-    ${recipeStr}`;
-  document.getElementById("item-info-overlay").classList.add("open");
+    ${recipeStr}`, e.currentTarget);
 }
 
-function showDropsInfoPopup(dropsJson) {
+function showDropsInfoPopup(dropsJson, e) {
+  e.stopPropagation();
   const drops = JSON.parse(dropsJson);
   const rows = drops.map(d => {
     const item    = ITEM_MAP[d.itemId];
@@ -1622,24 +1661,24 @@ function showDropsInfoPopup(dropsJson) {
     const recipeStr = recipes ? `<span class="ipu-drop-recipe">→ ${recipes.join("・")}</span>` : "";
     return `<div class="ipu-drop-row"><span class="ipu-drop-name">${name} <span class="ipu-drop-pct">${pct}%</span></span>${recipeStr}</div>`;
   }).join("");
-  document.getElementById("item-info-content").innerHTML = `
-    <div class="ipu-name">ドロップアイテム</div>
-    ${rows}`;
-  document.getElementById("item-info-overlay").classList.add("open");
+  _showPopover(`<div class="ipu-name">ドロップアイテム</div>${rows}`, e.currentTarget);
 }
 
 function closeItemInfoPopup() {
-  document.getElementById("item-info-overlay").classList.remove("open");
+  const pop = document.getElementById("item-info-popup");
+  pop.classList.remove("open");
+  if (_popoverCloseHandler) {
+    document.removeEventListener("click", _popoverCloseHandler);
+    _popoverCloseHandler = null;
+  }
 }
 
-// アイテム図鑑・インベントリ用アイコン
 function itemInfoIcon(itemId) {
-  return `<button class="info-icon-btn" onclick="event.stopPropagation();showItemInfoPopup('${itemId}')">${SVG_INFO}</button>`;
+  return `<button class="info-icon-btn" onclick="showItemInfoPopup('${itemId}',event)">${SVG_INFO}</button>`;
 }
-// モンスター図鑑用アイコン（ドロップ情報）
 function dropInfoIcon(drops) {
   const json = JSON.stringify(drops).replace(/'/g, "&#39;");
-  return `<button class="info-icon-btn" onclick="event.stopPropagation();showDropsInfoPopup('${json}')">${SVG_INFO}</button>`;
+  return `<button class="info-icon-btn" onclick="showDropsInfoPopup('${json}',event)">${SVG_INFO}</button>`;
 }
 
 const ITEM_RECIPE_MAP = (() => {
