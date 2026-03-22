@@ -44,6 +44,14 @@
       </div>
     </div>
 
+    <!-- アイテム情報ポップアップ -->
+    <div id="item-info-overlay" onclick="closeItemInfoPopup()">
+      <div id="item-info-popup" onclick="event.stopPropagation()">
+        <div id="item-info-content"></div>
+        <button id="item-info-close" onclick="closeItemInfoPopup()">閉じる</button>
+      </div>
+    </div>
+
     <!-- マップクリア演出 -->
     <div id="map-clear-overlay">
       <div id="map-clear-box">

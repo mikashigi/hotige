@@ -52,7 +52,7 @@ function renderItemBook() {
       ${!unseen ? `
       <div class="book-base-stats">基本: ${statStr(item)}</div>
       <div class="book-tier-list">${tierRows}</div>
-      ${recipeHintHtml(ITEM_RECIPE_MAP[item.id] || [])}` : ""}
+      ${itemInfoIcon(item.id)}` : ""}
     </div>`;
   }).join("");
 
@@ -138,7 +138,7 @@ function renderMonsterBook() {
         <div class="kill-count">×${kills} ${nextHint}</div>
         ${killTiers ? `<div class="bmc-tiers">${killTiers}</div>` : ""}
         <div class="book-drop-info">${drops}</div>
-        ${recipeHintHtml([...new Set(enemyDef.drops.flatMap(d => ITEM_RECIPE_MAP[d.itemId] || []))])}
+        ${dropInfoIcon(enemyDef.drops)}
       </div>`;
     }).join("");
 

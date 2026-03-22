@@ -1595,17 +1595,51 @@ function statStr(obj, prefix = "") {
     .join(" ") || "—";
 }
 
-// アイテムID → 使用レシピ名リストの逆引きマップ（クリックで開閉）
-function toggleRecipeHint(btn) {
-  const body = btn.nextElementSibling;
-  const open = body.hidden;
-  body.hidden = !open;
-  btn.classList.toggle("open", open);
+// --- アイテム情報ポップアップ ---
+const SVG_INFO = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
+
+function showItemInfoPopup(itemId) {
+  const item    = ITEM_MAP[itemId];
+  if (!item) return;
+  const recipes = ITEM_RECIPE_MAP[itemId];
+  const recipeStr = recipes
+    ? `<div class="ipu-recipes"><span class="ipu-label">使い道</span>${recipes.join("・")}</div>`
+    : `<div class="ipu-recipes ipu-no-recipe">精製には使いません</div>`;
+  document.getElementById("item-info-content").innerHTML = `
+    <div class="ipu-name">${item.name}</div>
+    <div class="ipu-stats"><span class="ipu-label">基本効果</span>${statStr(item)}</div>
+    ${recipeStr}`;
+  document.getElementById("item-info-overlay").classList.add("open");
 }
 
-function recipeHintHtml(recipes) {
-  if (!recipes || recipes.length === 0) return "";
-  return `<div class="recipe-hint"><button class="recipe-hint-btn" onclick="toggleRecipeHint(this)">使い道</button><div class="recipe-hint-body" hidden>${recipes.join("・")}</div></div>`;
+function showDropsInfoPopup(dropsJson) {
+  const drops = JSON.parse(dropsJson);
+  const rows = drops.map(d => {
+    const item    = ITEM_MAP[d.itemId];
+    const name    = item?.name ?? d.itemId;
+    const pct     = Math.round(d.rate * 100);
+    const recipes = ITEM_RECIPE_MAP[d.itemId];
+    const recipeStr = recipes ? `<span class="ipu-drop-recipe">→ ${recipes.join("・")}</span>` : "";
+    return `<div class="ipu-drop-row"><span class="ipu-drop-name">${name} <span class="ipu-drop-pct">${pct}%</span></span>${recipeStr}</div>`;
+  }).join("");
+  document.getElementById("item-info-content").innerHTML = `
+    <div class="ipu-name">ドロップアイテム</div>
+    ${rows}`;
+  document.getElementById("item-info-overlay").classList.add("open");
+}
+
+function closeItemInfoPopup() {
+  document.getElementById("item-info-overlay").classList.remove("open");
+}
+
+// アイテム図鑑・インベントリ用アイコン
+function itemInfoIcon(itemId) {
+  return `<button class="info-icon-btn" onclick="event.stopPropagation();showItemInfoPopup('${itemId}')">${SVG_INFO}</button>`;
+}
+// モンスター図鑑用アイコン（ドロップ情報）
+function dropInfoIcon(drops) {
+  const json = JSON.stringify(drops).replace(/'/g, "&#39;");
+  return `<button class="info-icon-btn" onclick="event.stopPropagation();showDropsInfoPopup('${json}')">${SVG_INFO}</button>`;
 }
 
 const ITEM_RECIPE_MAP = (() => {
@@ -1659,7 +1693,7 @@ function updateInventoryDisplay() {
           <span class="inv-cur-bonus">現在: ${curText}</span>
           ${nextText}
         </div>
-        ${recipeHintHtml(ITEM_RECIPE_MAP[item.id] || [])}
+        ${itemInfoIcon(item.id)}
       </div>`;
     });
   elInventory.innerHTML = entries.length
