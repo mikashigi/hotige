@@ -123,6 +123,20 @@ function _playLuckySfx(type) {
         tone(f, now + 0.25 + i * 0.075, 0.35, 0.18, 'triangle'));
       break;
     }
+    case 'spin_tick': {
+      // リール回転中のカチカチ音
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(masterGain);
+      o.type = 'square';
+      o.frequency.setValueAtTime(900, now);
+      o.frequency.exponentialRampToValueAtTime(500, now + 0.018);
+      g.gain.setValueAtTime(0.055, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
+      o.onended = () => { o.disconnect(); g.disconnect(); };
+      o.start(now); o.stop(now + 0.025);
+      break;
+    }
     case 'miss': {
       const o = audioCtx.createOscillator();
       const g = audioCtx.createGain();
@@ -502,6 +516,7 @@ function _animateSuperReel(el, cb) {
     if (Math.random() < Math.max(chance, 0.07)) {
       const r = Math.floor(Math.random() * (multMax - multMin + 1)) + multMin;
       el.textContent = `${r}×`;
+      _playLuckySfx('spin_tick');
     }
   }, 80);
 }
@@ -578,6 +593,7 @@ function _luckyRevival() {
     const spinTimer = setInterval(() => {
       reel.textContent = scrollSymbols[si % scrollSymbols.length];
       si++;
+      _playLuckySfx('spin_tick');
     }, 90);
 
     // Step3: 1.4s 後にがしゃーん！ 10× で止める
@@ -642,6 +658,7 @@ function _animateLuckyReel(el, isBase, finalVal, cb, duration = 1500) {
     if (Math.random() < Math.max(chance, 0.07)) {
       const r = Math.floor(Math.random() * (max - min + 1)) + min;
       el.textContent = isBase ? `${r}` : `${r}×`;
+      _playLuckySfx('spin_tick');
     }
   }, 80);
 }
