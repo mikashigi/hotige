@@ -1070,6 +1070,20 @@ function unlockSkill(id) {
   updateSkillDisplay();
   updateStatsDisplay();
   addSystemLog(`スキル「${node.name}」を習得！`);
+  requestAnimationFrame(() => {
+    const el = document.querySelector(`.skill-node[data-skill-id="${id}"]`);
+    if (!el) return;
+    el.classList.add("skill-unlocking");
+    // フローティングテキスト
+    const pop = document.createElement("div");
+    pop.className = "skill-unlock-pop";
+    pop.textContent = "習得！";
+    el.appendChild(pop);
+    el.addEventListener("animationend", () => {
+      el.classList.remove("skill-unlocking");
+      pop.remove();
+    }, { once: true });
+  });
 }
 
 function updateSkillDisplay() {
@@ -1089,7 +1103,7 @@ function updateSkillDisplay() {
       const reqNames = node.requires.map(r => SKILL_MAP[r]?.name ?? r).join("・");
 
       let stateClass = unlocked ? "unlocked" : locked ? "locked" : canBuy ? "available" : "unaffordable";
-      html += `<div class="skill-node ${stateClass}">`;
+      html += `<div class="skill-node ${stateClass}" data-skill-id="${node.id}">`;
       html += `<div class="skill-node-icon">${node.icon}</div>`;
       html += `<div class="skill-node-name">${node.name}</div>`;
       html += `<div class="skill-node-desc">${node.desc}</div>`;
