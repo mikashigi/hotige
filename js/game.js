@@ -1640,6 +1640,8 @@ function _showPopover(html, triggerEl) {
 
   if (_popoverCloseHandler) document.removeEventListener("click", _popoverCloseHandler, true);
   _popoverCloseHandler = ev => {
+    // ℹボタン自体のクリックはボタン側のトグル処理に任せる
+    if (ev.target.closest(".info-icon-btn")) return;
     if (!pop.contains(ev.target)) closeItemInfoPopup();
   };
   setTimeout(() => document.addEventListener("click", _popoverCloseHandler, true), 0);

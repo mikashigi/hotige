@@ -2276,7 +2276,7 @@ html, body {
   background: var(--stat-bg);
   border: 1px solid var(--border-light);
   border-radius: 8px;
-  padding: 7px 26px 28px 10px; /* right: ℹボタン分, bottom: ℹボタン分 */
+  padding: 7px 10px 28px; /* bottom: ℹボタン分 */
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -2559,7 +2559,6 @@ html, body {
   color: var(--text-muted);
   width: 100%;
   padding: 0 2px;
-  padding-right: 24px; /* ℹボタン分の余白 */
   line-height: 1.5;
 }
 .drop-row {
