@@ -44,11 +44,6 @@
       </div>
     </div>
 
-    <!-- アイテム情報ポップオーバー -->
-    <div id="item-info-popup">
-      <div id="item-info-content"></div>
-    </div>
-
     <!-- マップクリア演出 -->
     <div id="map-clear-overlay">
       <div id="map-clear-box">
@@ -320,6 +315,11 @@
       </div>
       <div class="modal-body" id="lucky-body"></div>
     </div>
+  </div>
+
+  <!-- アイテム情報ポップオーバー（#game の外に置くことで stacking context / overflow の影響を受けない） -->
+  <div id="item-info-popup">
+    <div id="item-info-content"></div>
   </div>
 
   <script src="js/data/items.js"></script>
