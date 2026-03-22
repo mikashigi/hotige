@@ -1599,6 +1599,7 @@ function statStr(obj, prefix = "") {
 const SVG_INFO = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`;
 
 let _popoverCloseHandler = null;
+let _popoverTrigger = null;
 
 function _showPopover(html, triggerEl) {
   const pop = document.getElementById("item-info-popup");
@@ -1634,6 +1635,7 @@ function _showPopover(html, triggerEl) {
   pop.style.left = left + "px";
   pop.style.top  = top  + "px";
   pop.style.transformOrigin = `right ${originY}`;
+  _popoverTrigger = triggerEl;
   pop.classList.add("open");
 
   if (_popoverCloseHandler) document.removeEventListener("click", _popoverCloseHandler, true);
@@ -1645,6 +1647,7 @@ function _showPopover(html, triggerEl) {
 
 function showItemInfoPopup(itemId, e) {
   e.stopPropagation();
+  if (_popoverTrigger === e.currentTarget) { closeItemInfoPopup(); return; }
   const item = ITEM_MAP[itemId];
   if (!item) return;
   const recipes = ITEM_RECIPE_MAP[itemId];
@@ -1659,6 +1662,7 @@ function showItemInfoPopup(itemId, e) {
 
 function showDropsInfoPopup(dropsJson, e) {
   e.stopPropagation();
+  if (_popoverTrigger === e.currentTarget) { closeItemInfoPopup(); return; }
   const drops = JSON.parse(dropsJson);
   const rows = drops.map(d => {
     const item    = ITEM_MAP[d.itemId];
@@ -1675,6 +1679,7 @@ function closeItemInfoPopup() {
   const pop = document.getElementById("item-info-popup");
   pop.classList.remove("open");
   pop.removeAttribute("style");
+  _popoverTrigger = null;
   if (_popoverCloseHandler) {
     document.removeEventListener("click", _popoverCloseHandler, true);
     _popoverCloseHandler = null;

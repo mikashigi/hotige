@@ -1103,7 +1103,7 @@ html, body {
 .inv-entry         { position: relative; padding-bottom: 22px; }
 .inv-entry:last-child { padding-bottom: 22px; }
 .book-item-card    { position: relative; padding-bottom: 28px; }
-.book-monster-card { position: relative; }
+.book-monster-card { position: relative; padding-bottom: 28px; }
 
 .info-icon-btn {
   position: absolute;
@@ -2554,22 +2554,12 @@ html, body {
   border-color: #88c060;
   color: #3a6a10;
 }
-.bmc-drops-wrap {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  margin-top: auto;
-}
-.bmc-drops-wrap .info-icon-btn {
-  position: static;
-  flex-shrink: 0;
-  align-self: flex-end;
-}
 .book-drop-info {
   font-size: 0.6rem;
   color: var(--text-muted);
-  flex: 1;
+  width: 100%;
   padding: 0 2px;
+  padding-right: 24px; /* ℹボタン分の余白 */
   line-height: 1.5;
 }
 .drop-row {

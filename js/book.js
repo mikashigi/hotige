@@ -137,10 +137,8 @@ function renderMonsterBook() {
         ${(evaSpan || critSpan) ? `<div class="bmc-stats">${evaSpan}${critSpan}</div>` : ""}
         <div class="kill-count">×${kills} ${nextHint}</div>
         ${killTiers ? `<div class="bmc-tiers">${killTiers}</div>` : ""}
-        <div class="bmc-drops-wrap">
-          <div class="book-drop-info">${drops}</div>
-          ${dropInfoIcon(enemyDef.drops)}
-        </div>
+        <div class="book-drop-info">${drops}</div>
+        ${dropInfoIcon(enemyDef.drops)}
       </div>`;
     }).join("");
 
