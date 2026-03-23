@@ -15,7 +15,7 @@ const LUCKY_CONFIG = {
   // ── 各リールの当たり確率 ─────────────────────────────────
   //   3リール同時抽選。全当たりで続行、ゾロ目で超運試し突入
   //   はずれ混じりで終了、全はずれで復活確定（×10追加）
-  jackpotChance: 0.80,   // ← ここを変える (0.0〜1.0)
+  jackpotChance: 0.84,   // ← ここを変える (0.0〜1.0)
 
   // ── 超運試しのループ確率 ──────────────────────────────────
   zoneLoopChance: 0.88,  // ← ここを変える (0.0〜1.0)
@@ -35,11 +35,12 @@ const LUCKY_CONFIG = {
   ],
   // 合計重み35 → 期待倍率 ≈ 6.2×
 
-  // ── 期待値の目安（3リール版） ────────────────────────────
-  // P(終了) = P(混合: 1か2つはずれ) = 0.480
-  // 1スピン期待倍率加算（ゾーン込み, zoneLoop=0.88）≈ 18.2
-  // E[倍率合計] = 18.2 / 0.480 ≈ 37.9
-  // E[報酬] = 275 × 37.9 ≈ 10,400G（ゾーン入場補正込み）
+  // ── 期待値の目安（3リール版・jackpotChance=0.82） ───────────
+  // P(全当たり)=0.82³≈55.1%  P(2当1外)≈36.3%  P(1当2外)≈8.0%  P(全外)≈0.6%
+  // P(終了) = 36.3 + 8.0 = 44.4%
+  // E[倍率合計/スピン] ≈ 15.8（ゾーン込み）
+  // E[倍率合計] = 15.8 / 0.444 ≈ 35.6
+  // E[報酬] = 300 × 35.6 ≈ 10,680G（ティア1: コスト10K → 約+7% EV）
   // ─────────────────────────────────────────────────────────
 };
 
@@ -276,7 +277,7 @@ function _renderLucky() {
     centerHtml = `
       <div class="lk-tier-row">${tierBtns}</div>
       <div class="lk-cost-line">1回 <strong>${fmt(tier.cost)}🪙</strong></div>
-      <div class="lk-hint">初期🪙を抽選後、3リールで倍率を同時抽選！<br>全当たりで続行・ゾロ目で超運試し突入<br>はずれ混じりで終了・全はずれは復活確定</div>`;
+      <div class="lk-hint">初期🪙を抽選後、3リールで倍率を同時抽選！<br>全当たりで続行・ゾロ目で超運試し突入<br>はずれ混じりで終了</div>`;
     btnsHtml = `
       <button class="lk-btn lk-btn-start" onclick="luckyStart()" ${ok ? '' : 'disabled'}>🎰 挑戦する</button>
       ${!ok ? `<div class="lk-nogold">🪙不足（所持: ${fmt(state.gold)}🪙）</div>` : ''}`;
@@ -315,9 +316,10 @@ function _renderLucky() {
   } else if (_luckyPhase === 'done') {
     const reward = _luckyTotal();
     const megaCls = reward >= LUCKY_CONFIG.tiers[_luckyTierIdx].cost * 2 ? ' lk-mega' : '';
+    const coinCls = megaCls ? ' class="lk-emoji-rainbow"' : '';
     centerHtml = `
       <div class="lk-done-label">獲得🪙</div>
-      <div class="lk-done-amount${megaCls}">${fmt(reward)}🪙</div>`;
+      <div class="lk-done-amount${megaCls}">${fmt(reward)}<span${coinCls}>🪙</span></div>`;
     btnsHtml = `<button class="lk-btn lk-btn-claim" onclick="luckyClaim()">✨ 受け取る</button>`;
   }
 
@@ -366,7 +368,7 @@ function luckySpin() {
       _luckyPhase = 'mult';
       _playLuckySfx('base');
       const msg = document.getElementById('lk-msg');
-      if (msg) msg.innerHTML = `<span class="lk-msg-base">ベース🪙: ${fmt(finalVal)}🪙 確定！</span>`;
+      if (msg) msg.innerHTML = `<span class="lk-msg-base">ベース: ${fmt(finalVal)}🪙 確定！</span>`;
       setTimeout(_renderLucky, 900);
     });
 
@@ -466,7 +468,7 @@ function _handleZoroi(val, reels) {
       overlay.className = 'lk-zone-entry-overlay';
       overlay.id = 'lk-zone-entry-overlay';
       overlay.innerHTML = `
-        <div class="lk-zone-entry-title">🌟 超運試し 🌟<br>突　入！！</div>
+        <div class="lk-zone-entry-title"><span class="lk-emoji-rainbow">🌟</span> 超運試し <span class="lk-emoji-rainbow">🌟</span><br>突　入！！</div>
         <div class="lk-zone-entry-sub">継続率 ${Math.round(LUCKY_CONFIG.zoneLoopChance * 100)}%</div>`;
       body.appendChild(overlay);
     }
@@ -503,7 +505,7 @@ function _animateSuperReel(el, cb) {
     if (progress >= 1) {
       clearInterval(timer);
       el.classList.remove('lk-reel-spinning');
-      el.textContent = '★';
+      _reelSetValue(el, '★');
       el.classList.add('lk-reel-super');
       _playLuckySfx('super');
       _luckyParticleBurst('super');
@@ -565,60 +567,59 @@ function _doZoneSpin() {
 
 // ── 復活演出 ─────────────────────────────────────────────────────
 function _luckyRevival() {
-  // mult フェーズでは lk-reel-0/1/2、zone フェーズでは lk-reel
-  const reel = document.getElementById('lk-reel-0') || document.getElementById('lk-reel');
-  const msg  = document.getElementById('lk-msg');
-  if (!reel) return;
+  // 3リール全て取得（zone フェーズなら lk-reel 1本）
+  const reels = [0, 1, 2].map(i => document.getElementById(`lk-reel-${i}`)).filter(Boolean);
+  if (!reels.length) { const r = document.getElementById('lk-reel'); if (r) reels.push(r); }
+  if (!reels.length) return;
+  const msg = document.getElementById('lk-msg');
 
-  // 3リール表示中なら他2つをフェードアウト
-  [1, 2].forEach(i => {
-    const r = document.getElementById(`lk-reel-${i}`);
-    if (r) r.style.transition = 'opacity 0.4s', r.style.opacity = '0.15';
+  // Step1: 全リールをロック（赤枠ドキドキ）
+  reels.forEach(r => {
+    r.classList.remove('lk-reel-miss', 'lk-reel-dead');
+    r.style.opacity = '';
+    r.style.transition = '';
+    r.classList.add('lk-reel-lock');
   });
-
-  // Step1: リールロック（赤枠ドキドキ）
-  reel.classList.remove('lk-reel-miss');
-  reel.classList.add('lk-reel-lock');
   if (msg) msg.innerHTML = '';
   _playLuckySfx('revival_lock');
 
-  // Step2: 0.5s 後に高速上スクロール開始
+  // Step2: 0.5s 後に全リール高速スクロール開始
   const scrollSymbols = ['はずれ','2×','はずれ','5×','はずれ','3×','はずれ','10×'];
   let si = 0;
   setTimeout(() => {
-    reel.classList.remove('lk-reel-lock');
-    reel.classList.add('lk-reel-revival');
+    reels.forEach(r => { r.classList.remove('lk-reel-lock'); r.classList.add('lk-reel-revival'); });
     if (msg) msg.innerHTML = '';
 
     const spinTimer = setInterval(() => {
-      reel.textContent = scrollSymbols[si % scrollSymbols.length];
+      // 各リールを少しずらして独立感を出す
+      reels.forEach((r, i) => _reelSetValue(r, scrollSymbols[(si + i * 3) % scrollSymbols.length]));
       si++;
       _playLuckySfx('spin_tick');
     }, 90);
 
-    // Step3: 1.4s 後にがしゃーん！ 10× で止める
+    // Step3: 1.4s 後に全リール 10× でがしゃーん！
     setTimeout(() => {
       clearInterval(spinTimer);
-      reel.classList.remove('lk-reel-revival');
-      reel.textContent = '10×';
-      reel.classList.add('lk-reel-crash');
+      reels.forEach(r => {
+        r.classList.remove('lk-reel-revival');
+        _reelSetValue(r, '10×');
+        r.classList.add('lk-reel-crash');
+      });
 
-      // フラッシュ
       const body = document.getElementById('lucky-body');
       if (body) {
         body.classList.add('lk-revival-flash');
         setTimeout(() => body.classList.remove('lk-revival-flash'), 500);
       }
-      // パーティクル
       _luckyParticleBurst('jackpot');
       _playLuckySfx('revival_crash');
 
       if (msg) msg.innerHTML = `<span class="lk-revival-msg">💥 復活！ ×10 追加！！</span>`;
 
-      // Step4: 1s 後に mult フェーズへ復帰
+      // Step4: 1.1s 後に mult フェーズへ復帰
       setTimeout(() => {
         _luckyMults.push(10);
-        reel.classList.remove('lk-reel-crash');
+        reels.forEach(r => r.classList.remove('lk-reel-crash'));
         _luckyPhase = 'mult';
         _luckySpinning = false;
         _renderLucky();
@@ -627,13 +628,33 @@ function _luckyRevival() {
   }, 500);
 }
 
-// リールに値をセットしてスライドアニメを再生
+// リールに値をセット（現在値を下へ退場、新値を上から登場）
 function _reelSetValue(el, text) {
-  el.textContent = text;
-  el.style.animation = 'none';
-  // 強制リフロー後に再セットしてアニメをリスタート
-  void el.offsetWidth;
-  el.style.animation = 'lkReelSlide 0.05s ease-out';
+  const h = el.offsetHeight || 88;
+
+  // 表示中のspanを現在位置から下へ退場
+  el.querySelectorAll('.lk-reel-inner:not(.lk-reel-exiting)').forEach(s => {
+    s.classList.add('lk-reel-exiting');
+    const matrix = new DOMMatrix(window.getComputedStyle(s).transform);
+    const curY = isFinite(matrix.m42) ? matrix.m42 : 0;
+    s.animate(
+      [{ transform: `translateY(${curY}px)` }, { transform: `translateY(${h}px)` }],
+      { duration: 70, fill: 'forwards', easing: 'ease-in' }
+    ).onfinish = () => s.remove();
+  });
+
+  // プレースホルダーテキストを除去（初回のみ）
+  if (!el.querySelector('.lk-reel-inner')) el.innerHTML = '';
+
+  // 新しいspanを上から登場
+  const span = document.createElement('span');
+  span.className = 'lk-reel-inner';
+  span.textContent = text;
+  el.appendChild(span);
+  span.animate(
+    [{ transform: `translateY(${-h}px)` }, { transform: 'translateY(0)' }],
+    { duration: 70, fill: 'forwards', easing: 'ease-out' }
+  );
 }
 
 function _animateLuckyReel(el, isBase, finalVal, cb, duration = 1500) {

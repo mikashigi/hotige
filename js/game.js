@@ -60,15 +60,6 @@ function makeRareEnemy(mapIndex, stageInMap) {
 
 // 図鑑用：特定の敵定義から代表ステータスを計算（通常 si=4、ボス si=9）
 function computeEnemyStats(mi, enemyDef, isBoss, isRare = false) {
-  const def    = MAP_DEFS[mi];
-  const mult   = Math.pow(2, mi);
-  const si     = isBoss ? 9 : 4;
-  const hpMult   = enemyDef.hpMult  ?? 1.0;
-  const atkMult  = enemyDef.atkMult ?? 1.0;
-  const bossHpM  = def.isFinal ? 10 : 6;
-  const bossAtkM = def.isFinal ? 4  : 3;
-  const baseHp   = Math.round(5 * mult * (1 + si * 0.9 + si * si * 0.12));
-  const baseAtk  = Math.round(3 * Math.sqrt(mult) * (1 + si * 0.08));
   return {
     evasion: enemyDef.evasion ?? 0,
     critRes: enemyDef.critRes ?? 0,
@@ -1224,6 +1215,9 @@ function startRefine(recipeId, count) {
   refineIntervalId = setInterval(refineTick, REFINE_TICK_MS);
   updateRefineDisplay();
   updateInventoryDisplay();
+  requestAnimationFrame(() => {
+    document.getElementById('pane-refine')?.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 }
 
 function cancelRefine() {
@@ -1347,17 +1341,22 @@ function updateRefineDisplay() {
     const outItem  = ITEM_MAP[recipe.output.itemId];
     const outName  = (outItem?.icon ? outItem.icon + ' ' : '') + (outItem?.name ?? recipe.output.itemId);
     const outHave  = state.inventory[recipe.output.itemId] || 0;
-    const outTier  = getItemTier(outHave);
-    const tierStr  = outTier > 0 ? ` / Tier${outTier}` : "";
+    const outObtained = state.itemsObtained[recipe.output.itemId] || outHave;
+    const outTier  = getItemTier(outObtained);
+    const nextThreshold = BONUS_THRESHOLDS[outTier];
+    const nextStr  = nextThreshold !== undefined ? ` / あと${nextThreshold - outObtained}` : "";
+    const tierLabel = `Tier${outTier}${nextThreshold === undefined ? "(MAX)" : ""}`;
     html += `
       <div class="refine-recipe-row${isActive ? " refining" : ""}" id="refine-row-${recipe.id}">
         <div class="refine-recipe-info">
           <div class="refine-recipe-name">${outItem?.icon ?? ''} ${recipe.name}</div>
           <div class="refine-ingredients">${chipsHtml}</div>
-          <div class="refine-output">→ ${outName} ×${recipe.output.count}　${recipe.time}秒　<span class="refine-out-have">所持: ${outHave}${tierStr}</span></div>
+          <div class="refine-output">→ ${outName} ×${recipe.output.count}　${recipe.time}秒　<span class="refine-out-have">所持: ${outHave} <span class="refine-tier-hint">${tierLabel}${nextStr}</span></span></div>
         </div>
         <div class="refine-btn-group">
-          <button class="refine-btn" ${ok ? "" : "disabled"} onclick="startRefine('${recipe.id}', 1)">×1</button>
+          ${nextThreshold !== undefined
+            ? `<button class="refine-btn refine-btn-next" ${ok ? "" : "disabled"} onclick="startRefine('${recipe.id}', ${Math.ceil((nextThreshold - outObtained) / recipe.output.count)})">次Tierまで</button>`
+            : `<button class="refine-btn refine-btn-next" disabled>MAX</button>`}
           <button class="refine-btn" ${ok ? "" : "disabled"} onclick="startRefine('${recipe.id}', 10)">×10</button>
           <button class="refine-btn" ${ok ? "" : "disabled"} onclick="startRefine('${recipe.id}', -1)">∞</button>
         </div>
@@ -1435,7 +1434,16 @@ function switchTab(paneId) {
   });
   // 精製タブを開いたらバッジをクリア
   if (paneId === 'pane-refine') clearRefineBadge();
-  if (paneId === 'pane-quests') { const b = document.getElementById('quest-badge'); if (b) b.className = 'tab-badge'; }
+  if (paneId === 'pane-quests') {
+    const b = document.getElementById('quest-badge'); if (b) b.className = 'tab-badge';
+    requestAnimationFrame(() => {
+      if (QUESTS.filter(q => _getQuestState(q.id).claimable).length >= 2) {
+        document.getElementById('pane-quests')?.scrollTo({ top: 0, behavior: 'instant' });
+      } else {
+        centerQuestCard(false);
+      }
+    });
+  }
 }
 
 function notifyRefineTab(type) { // type: 'success' | 'warn'
@@ -1505,6 +1513,33 @@ function checkQuests() {
   updateQuestDisplay();
 }
 
+function playQuestClaimSfx(bulk = false) {
+  if (soundMuted || audioCtx.state !== 'running') return;
+  const now = audioCtx.currentTime;
+  const tone = (freq, t, dur, vol = 0.13) => {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.connect(g); g.connect(masterGain);
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+  };
+  if (bulk) {
+    tone(523.25, now,        0.13, 0.15);
+    tone(659.25, now + 0.09, 0.13, 0.15);
+    tone(783.99, now + 0.18, 0.13, 0.15);
+    tone(1046.5, now + 0.27, 0.30, 0.18);
+  } else {
+    tone(659.25, now,        0.10, 0.12);
+    tone(783.99, now + 0.08, 0.10, 0.12);
+    tone(1046.5, now + 0.16, 0.22, 0.14);
+  }
+}
+
 function claimQuest(id) {
   const quest = QUEST_MAP[id];
   const qs = _getQuestState(id);
@@ -1524,10 +1559,57 @@ function claimQuest(id) {
   qs.baseline = quest.getValue(state);
   qs.claimable = false;
 
+  playQuestClaimSfx(false);
   updateShopDisplay();
   updateInventoryDisplay();
   updateQuestDisplay();
   checkAchievements();
+  const remainingClaimable = QUESTS.filter(q => _getQuestState(q.id).claimable).length;
+  if (remainingClaimable === 0) {
+    requestAnimationFrame(() => centerQuestCard(true));
+  }
+}
+
+function claimAllQuests() {
+  const claimable = QUESTS.filter(q => _getQuestState(q.id).claimable);
+  if (claimable.length === 0) return;
+  for (const quest of claimable) {
+    const qs = _getQuestState(quest.id);
+    if (quest.reward.gold) {
+      state.gold += quest.reward.gold;
+      state.totalGoldEarned += quest.reward.gold;
+    }
+    if (quest.reward.item) {
+      for (let i = 0; i < quest.reward.itemCount; i++) _grantItem(quest.reward.item);
+    }
+    const rewardText = _questRewardText(quest);
+    addSystemLog(`クエスト「${quest.name}」達成！ ${rewardText}`);
+    qs.completions++;
+    qs.baseline = quest.getValue(state);
+    qs.claimable = false;
+  }
+  playQuestClaimSfx(true);
+  updateShopDisplay();
+  updateInventoryDisplay();
+  updateQuestDisplay();
+  checkAchievements();
+}
+
+function centerQuestCard(smooth = true) {
+  const pane = document.getElementById('pane-quests');
+  if (!pane) return;
+  // 一括ボタンが出ているときはスクロールしない
+  if (QUESTS.filter(q => _getQuestState(q.id).claimable).length >= 2) return;
+  // 受け取れるやつ → なければ進捗が最も高いやつ
+  let target = pane.querySelector('.quest-row.claimable');
+  if (!target) {
+    let maxPct = -1;
+    pane.querySelectorAll('.quest-row').forEach(row => {
+      const w = parseFloat(row.querySelector('.quest-bar-fill')?.style.width) || 0;
+      if (w > maxPct) { maxPct = w; target = row; }
+    });
+  }
+  if (target) target.scrollIntoView({ behavior: smooth ? 'smooth' : 'instant', block: 'center' });
 }
 
 function _questRewardText(quest) {
@@ -1556,7 +1638,15 @@ function updateQuestDisplay() {
     else              badge.className = 'tab-badge';
   }
 
-  el.innerHTML = QUESTS.map(quest => {
+  const claimableCount = QUESTS.filter(q => _getQuestState(q.id).claimable).length;
+  const bulkHtml = claimableCount >= 2
+    ? `<div class="quest-bulk-header"><button class="quest-bulk-btn" onclick="claimAllQuests()">✨ 一括受け取り（${claimableCount}件）</button></div>`
+    : '';
+
+  const pane = document.getElementById('pane-quests');
+  const savedScroll = (claimableCount >= 2 && pane) ? pane.scrollTop : null;
+
+  el.innerHTML = bulkHtml + QUESTS.map(quest => {
     const qs = _getQuestState(quest.id);
     const raw   = quest.getValue(state) - qs.baseline;
     const prog  = Math.min(raw, quest.target);
@@ -1581,6 +1671,8 @@ function updateQuestDisplay() {
       </div>
     </div>`;
   }).join('');
+
+  if (savedScroll !== null) pane.scrollTop = savedScroll;
 }
 
 function showAchievementToast(ach) {
@@ -1595,7 +1687,6 @@ function showAchievementToast(ach) {
 
 function openAchievements() {
   const el = document.getElementById('achievement-content');
-  const stats = computePlayerStats();
   const unlocked = new Set(state.achievements);
   let count = 0;
   el.innerHTML = '';

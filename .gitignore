@@ -1,0 +1,15 @@
+# ESLint
+eslint.config.js
+
+# npm（将来的に使う場合）
+node_modules/
+package.json
+package-lock.json
+
+# OS生成ファイル
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ログ
+*.log
